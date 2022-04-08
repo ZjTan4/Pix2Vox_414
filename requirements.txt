@@ -1,0 +1,9 @@
+argparse
+easydict
+matplotlib
+numpy
+opencv-python
+pprintpp
+scipy
+torchvision
+tensorboardX
