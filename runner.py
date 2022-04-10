@@ -51,7 +51,7 @@ def main():
     if not args.randomize:
         np.random.seed(cfg.CONST.RNG_SEED)
     if args.batch_size is not None:
-        cfg.CONST.BATCH_SIZE = args.batch_size+
+        cfg.CONST.BATCH_SIZE = args.batch_size
     if args.epoch is not None:
         cfg.TRAIN.NUM_EPOCHES = args.epoch
     if args.out_path is not None:
