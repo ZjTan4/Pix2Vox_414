@@ -268,7 +268,7 @@ def train_net(cfg):
                     #write(numpy_vol,f)
                 SHAPENET_PATH = "./ShapeNetRendering"
                 R2N2_PATH = "./voxexample"
-                SPLITS_PATH = "./datasets/pix2mesh_splits_val05"
+                SPLITS_PATH = "./datasets/pix2mesh_splits_val05.json"
                 r2n2_dataset = R2N2("train", SHAPENET_PATH, R2N2_PATH, SPLITS_PATH, return_voxels=True)
                 r2n2_oriented_images = r2n2_dataset.render(
                     idxs=[0],
