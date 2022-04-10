@@ -100,7 +100,8 @@ class Voxels(object):
 
     def write(self, fp):
         write(self, fp)
-
+    def data_setter(self,data):
+        self.data = data
 
 def read_header(fp):
     """ Read binvox header. Mostly meant for internal use.

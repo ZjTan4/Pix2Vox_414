@@ -11,8 +11,10 @@ import torch.utils.data
 import utils.binvox_visualization
 import utils.data_loaders
 import utils.data_transforms
-import utils.network_utils
+import utils.network_utils 
+from utils.binvox_rw  import read_as_3d_array
 
+import errno
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
 from time import time
@@ -23,7 +25,7 @@ from models.decoder import Decoder
 from models.refiner import Refiner
 from models.merger import Merger
 
-
+from pytorch3d.datasets import R2N2
 def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
@@ -181,6 +183,7 @@ def train_net(cfg):
         n_batches = len(train_data_loader)
         for batch_idx, (taxonomy_names, sample_names, rendering_images,
                         ground_truth_volumes) in enumerate(train_data_loader):
+            batch_size = len(taxonomy_names)
             # Measure data time
             data_time.update(time() - batch_end_time)
 
@@ -203,6 +206,77 @@ def train_net(cfg):
                 refiner_loss = bce_loss(generated_volumes, ground_truth_volumes) * 10
             else:
                 refiner_loss = encoder_loss
+            for i in range(batch_size):
+                taxonomy_name = taxonomy_names[i]
+                sample_name = sample_names[i]
+                rendering_image = rendering_images[i]
+                dir_name = "%s" % (taxonomy_name)
+                destination = "./voxexample/"
+                path = os.path.join(destination, dir_name)
+                destination2 = "./model_rendering/"
+                path2 = os.path.join(destination2, dir_name)
+                # create the model rendering folder
+                try:
+                    os.makedirs(path2)
+                    dir_name = "%s"%(sample_name)
+                    try:
+                        path3 = os.path.join(path2,dir_name)
+                        os.makedirs(path3)
+                    except OSError as e:
+                        if e.errno != errno.EEXIST:
+                            raise
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                    try:
+                        dir_name = "%s"%(sample_name)
+                        path3 = os.path.join(path2,dir_name)
+                        os.makedirs(path3)
+                    except OSError as e:
+                        if e.errno != errno.EEXIST:
+                            raise
+
+                try:
+                    os.makedirs(path)
+                    dir_name = "%s"%(sample_name)
+                    try:
+                        path = os.path.join(path,dir_name)
+                        os.makedirs(path)
+                    except OSError as e:
+                        if e.errno != errno.EEXIST:
+                            raise
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise
+                    try:
+                        dir_name = "%s"%(sample_name)
+                        path = os.path.join(path,dir_name)
+                        os.makedirs(path)
+                    except OSError as e:
+                        if e.errno != errno.EEXIST:
+                            raise
+                with open("../Pix2Vox/ShapeNetVox32/%s/%s/model.binvox" %(taxonomy_name,sample_name),"rb") as f:
+                    m1 = read_as_3d_array(f)
+
+
+                with open("./voxexample/%s/%s/model.binvox" %(taxonomy_name,sample_name),"wb") as f:
+                    numpy_vol = generated_volumes[i].detach().numpy()
+                    m1.data_setter(numpy_vol)
+                    m1.write(f)
+                    #write(numpy_vol,f)
+                SHAPENET_PATH = "../Pix2Vox/ShapeNetRendering"
+                R2N2_PATH = "./voxexample"
+                SPLITS_PATH = "None"
+                r2n2_dataset = R2N2("train", SHAPENET_PATH, R2N2_PATH, SPLITS_PATH, return_voxels=True)
+                r2n2_oriented_images = r2n2_dataset.render(
+                    idxs=[0],
+                    view_idxs=[0],
+                    device=cfg.CONST.DEVICE,
+                    # raster_settings=raster_settings,
+                    # lights=lights,
+                )
+                imsave("./model_rendering/%s/%s/01.png" %(taxonomy_name,sample_name),r2n2_oriented_images.cpu().numpy())
+
 
             # Gradient decent
             encoder.zero_grad()
@@ -220,6 +294,7 @@ def train_net(cfg):
             decoder_solver.step()
             refiner_solver.step()
             merger_solver.step()
+
 
             # Append loss to average metrics
             encoder_losses.update(encoder_loss.item())
