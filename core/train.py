@@ -14,6 +14,8 @@ import utils.data_transforms
 import utils.network_utils 
 from utils.binvox_rw  import read_as_3d_array
 
+import matplotlib.pyplot as plt
+
 import errno
 from datetime import datetime as dt
 from tensorboardX import SummaryWriter
@@ -255,18 +257,18 @@ def train_net(cfg):
                     except OSError as e:
                         if e.errno != errno.EEXIST:
                             raise
-                with open("../Pix2Vox/ShapeNetVox32/%s/%s/model.binvox" %(taxonomy_name,sample_name),"rb") as f:
+                with open("./ShapeNetVox32/%s/%s/model.binvox" %(taxonomy_name,sample_name),"rb") as f:
                     m1 = read_as_3d_array(f)
 
 
                 with open("./voxexample/%s/%s/model.binvox" %(taxonomy_name,sample_name),"wb") as f:
-                    numpy_vol = generated_volumes[i].detach().numpy()
+                    numpy_vol = generated_volumes[i].cpu().detach().numpy()
                     m1.data_setter(numpy_vol)
                     m1.write(f)
                     #write(numpy_vol,f)
-                SHAPENET_PATH = "../Pix2Vox/ShapeNetRendering"
+                SHAPENET_PATH = "./ShapeNetRendering"
                 R2N2_PATH = "./voxexample"
-                SPLITS_PATH = "None"
+                SPLITS_PATH = "./datasets/pix2mesh_splits_val05"
                 r2n2_dataset = R2N2("train", SHAPENET_PATH, R2N2_PATH, SPLITS_PATH, return_voxels=True)
                 r2n2_oriented_images = r2n2_dataset.render(
                     idxs=[0],
@@ -275,7 +277,7 @@ def train_net(cfg):
                     # raster_settings=raster_settings,
                     # lights=lights,
                 )
-                imsave("./model_rendering/%s/%s/01.png" %(taxonomy_name,sample_name),r2n2_oriented_images.cpu().numpy())
+                plt.imsave("./model_rendering/%s/%s/01.png" %(taxonomy_name,sample_name),r2n2_oriented_images.cpu().numpy())
 
 
             # Gradient decent
