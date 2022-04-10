@@ -7,3 +7,4 @@ pprintpp
 scipy
 torchvision
 tensorboardX
+pytorch3d
