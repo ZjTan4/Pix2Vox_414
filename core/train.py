@@ -4,6 +4,7 @@
 
 import os
 import random
+from django.shortcuts import render
 import torch
 import torch.backends.cudnn
 import torch.utils.data
@@ -23,6 +24,17 @@ from models.decoder import Decoder
 from models.refiner import Refiner
 from models.merger import Merger
 
+import pytorch3d.datasets
+import pytorch3d.ops
+from pytorch3d.renderer import (
+    HardPhongShader,
+    MeshRasterizer,
+    MeshRenderer,
+    PointLights,
+    RasterizationSettings,
+    TexturesVertex,
+)
+from utils.test_camera import blenderCamera, image_grid
 
 def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
@@ -203,6 +215,21 @@ def train_net(cfg):
                 refiner_loss = bce_loss(generated_volumes, ground_truth_volumes) * 10
             else:
                 refiner_loss = encoder_loss
+            
+            cubified_voxels = pytorch3d.ops.cubify(generated_volumes, 0.2).to('cpu')
+            renderer = MeshRenderer(
+                rasterizer=MeshRasterizer(
+                    cameras=blenderCamera,
+                    raster_settings=RasterizationSettings(),
+                ),
+                shader=HardPhongShader(
+                    device='cpu',
+                    cameras=blenderCamera,
+                    lights=PointLights().to('cpu'),
+                )
+            )
+            #imges = renderer(cubified_voxels)
+
 
             # Gradient decent
             encoder.zero_grad()
