@@ -12,12 +12,12 @@ from pytorch3d.renderer import (
     EmissionAbsorptionRaymarcher
 )
 from pytorch3d.structures import Volumes
-from binvox_rw import read_as_3d_array, read_as_coord_array
-import camera
+from utils.binvox_rw import read_as_3d_array, read_as_coord_array
+import utils.camera as camera
 
 model_views = [0]
 
-with open("./ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
+with open("../Pix2Vox/ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
     metadata_lines = fm.readlines()
 for i in model_views:
     azim, elev, yaw, dist_ratio, fov = [
@@ -26,9 +26,9 @@ for i in model_views:
 RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
 R, T = camera.compute_camera_calibration(RT)
 
-# Intrinsic matrix extracted from the Blender with slight modification to work with
-# PyTorch3D world space. Taken from meshrcnn codebase:
-# https://github.com/facebookresearch/meshrcnn/blob/main/shapenet/utils/coords.py
+    # Intrinsic matrix extracted from the Blender with slight modification to work with
+    # PyTorch3D world space. Taken from meshrcnn codebase:
+    # https://github.com/facebookresearch/meshrcnn/blob/main/shapenet/utils/coords.py
 K = torch.tensor(
     [
         [2.1875, 0.0, 0.0, 0.0],
@@ -47,52 +47,89 @@ blenderCamera = r2n2.utils.BlenderCamera(
     K=Ks, 
 )
 
-fovCameras = FoVPerspectiveCameras(
-    R=Rs, 
-    T=Ts,
-    # K=Ks
-    fov=fov, 
-    aspect_ratio=dist_ratio
-)
 
-# volumetric renderer
-# render_size = 576
-render_size = 224
-volume_extent_world = 10.0
+def main():
+    from binvox_rw import read_as_3d_array, read_as_coord_array
+    import camera
 
-raysampler = NDCMultinomialRaysampler(
-    image_width=render_size, 
-    image_height=render_size,
-    n_pts_per_ray=150, 
-    min_depth=0.0001,
-    max_depth=volume_extent_world
-)
-raymarcher = EmissionAbsorptionRaymarcher()
+    model_views = [0]
 
-vox_renderer = VolumeRenderer(
-    raysampler=raysampler, 
-    raymarcher=raymarcher
-)
+    with open("./ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
+        metadata_lines = fm.readlines()
+    for i in model_views:
+        azim, elev, yaw, dist_ratio, fov = [
+            float(v) for v in metadata_lines[i].strip().split(" ")
+        ]
+    RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
+    R, T = camera.compute_camera_calibration(RT)
 
-torch.set_printoptions(edgeitems=32)
+    # Intrinsic matrix extracted from the Blender with slight modification to work with
+    # PyTorch3D world space. Taken from meshrcnn codebase:
+    # https://github.com/facebookresearch/meshrcnn/blob/main/shapenet/utils/coords.py
+    K = torch.tensor(
+        [
+            [2.1875, 0.0, 0.0, 0.0],
+            [0.0, 2.1875, 0.0, 0.0],
+            [0.0, 0.0, -1.002002, -0.2002002],
+            [0.0, 0.0, 1.0, 0.0],
+        ]
+    )
+    Rs = torch.stack([R])
+    Ts = torch.stack([T])
+    Ks = K.expand(1, 4, 4)
 
-with open("C:\\Users\\MK12_\\Source\\Pix2Vox_414\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
-    array_3d = read_as_3d_array(fp)
-    array_3d = torch.tensor(array_3d.data, dtype=torch.float32)
-    
-    """
-    volume = volume.squeeze().__ge__(0.5)
-    fig = plt.figure()
-    x = fig.gc(projection=)
-    """
-    dens = array_3d.expand(1, 1, *array_3d.shape)
-    volume = Volumes(densities=dens)
-    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
-    # print("rendered_img:", rendered_images[0])
+    blenderCamera = r2n2.utils.BlenderCamera(
+        R=Rs, 
+        T=Ts, 
+        K=Ks, 
+    )
 
-    # print("rendered_silhouettes", rendered_silhouettes[0])
-    plt.imshow(rendered_images[0]) 
-    plt.show()
+    fovCameras = FoVPerspectiveCameras(
+        R=Rs, 
+        T=Ts,
+        # K=Ks
+        fov=fov, 
+        aspect_ratio=dist_ratio
+    )
+
+    # volumetric renderer
+    # render_size = 576
+    render_size = 224
+    volume_extent_world = 10.0
+
+    raysampler = NDCMultinomialRaysampler(
+        image_width=render_size, 
+        image_height=render_size,
+        n_pts_per_ray=150, 
+        min_depth=0.0001,
+        max_depth=volume_extent_world
+    )
+    raymarcher = EmissionAbsorptionRaymarcher()
+
+    vox_renderer = VolumeRenderer(
+        raysampler=raysampler, 
+        raymarcher=raymarcher
+    )
+
+    torch.set_printoptions(edgeitems=32)
+
+    with open("C:\\Users\\MK12_\\Source\\Pix2Vox_414\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
+        array_3d = read_as_3d_array(fp)
+        array_3d = torch.tensor(array_3d.data, dtype=torch.float32)
+        
+        """
+        volume = volume.squeeze().__ge__(0.5)
+        fig = plt.figure()
+        x = fig.gc(projection=)
+        """
+        dens = array_3d.expand(1, 1, *array_3d.shape)
+        volume = Volumes(densities=dens)
+        rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
+        # print("rendered_img:", rendered_images[0])
+
+        # print("rendered_silhouettes", rendered_silhouettes[0])
+        plt.imshow(rendered_images[0]) 
+        plt.show()
 
 
 def image_grid(
@@ -137,3 +174,6 @@ def image_grid(
             ax.imshow(im[..., 3])
         if not show_axes:
             ax.set_axis_off()
+
+if __name__ == "__main__":
+    main()
