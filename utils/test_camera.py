@@ -12,8 +12,10 @@ from pytorch3d.renderer import (
     EmissionAbsorptionRaymarcher
 )
 from pytorch3d.structures import Volumes
-from utils.binvox_rw import read_as_3d_array, read_as_coord_array
-import utils.camera as camera
+# from utils.binvox_rw import read_as_3d_array, read_as_coord_array
+# import utils.camera as camera
+from binvox_rw import read_as_3d_array, read_as_coord_array
+import camera
 
 model_views = [0]
 
@@ -49,12 +51,9 @@ blenderCamera = r2n2.utils.BlenderCamera(
 
 
 def main():
-    from binvox_rw import read_as_3d_array, read_as_coord_array
-    import camera
-
     model_views = [0]
 
-    with open("./ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
+    with open("../Pix2Vox/ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
         metadata_lines = fm.readlines()
     for i in model_views:
         azim, elev, yaw, dist_ratio, fov = [
@@ -87,7 +86,7 @@ def main():
     fovCameras = FoVPerspectiveCameras(
         R=Rs, 
         T=Ts,
-        # K=Ks
+        K=Ks,
         fov=fov, 
         aspect_ratio=dist_ratio
     )
@@ -95,13 +94,13 @@ def main():
     # volumetric renderer
     # render_size = 576
     render_size = 224
-    volume_extent_world = 10.0
+    volume_extent_world = 0.8
 
     raysampler = NDCMultinomialRaysampler(
         image_width=render_size, 
         image_height=render_size,
-        n_pts_per_ray=150, 
-        min_depth=0.0001,
+        n_pts_per_ray=50, 
+        min_depth=0.00001,
         max_depth=volume_extent_world
     )
     raymarcher = EmissionAbsorptionRaymarcher()
@@ -111,25 +110,30 @@ def main():
         raymarcher=raymarcher
     )
 
-    torch.set_printoptions(edgeitems=32)
-
-    with open("C:\\Users\\MK12_\\Source\\Pix2Vox_414\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
+    with open("C:\\Users\\MK12_\\Source\\Pix2Vox\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
         array_3d = read_as_3d_array(fp)
         array_3d = torch.tensor(array_3d.data, dtype=torch.float32)
-        
-        """
-        volume = volume.squeeze().__ge__(0.5)
-        fig = plt.figure()
-        x = fig.gc(projection=)
-        """
+
+        colors = torch.zeros(*array_3d.shape)
+        colors[array_3d==1] = 1
+
+        b = torch.sum(colors)
+
+        volume_size = 32
+        colors = colors.expand(1, 3, *array_3d.shape)
         dens = array_3d.expand(1, 1, *array_3d.shape)
-        volume = Volumes(densities=dens)
+        volume = Volumes(
+            densities=dens, 
+            features=colors,
+            voxel_size=volume_extent_world/volume_size
+        )
         rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
         # print("rendered_img:", rendered_images[0])
-
+        a = torch.sum(rendered_images[0])
         # print("rendered_silhouettes", rendered_silhouettes[0])
         plt.imshow(rendered_images[0]) 
         plt.show()
+        print("end")
 
 
 def image_grid(
