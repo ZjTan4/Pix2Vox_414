@@ -41,11 +41,7 @@ Rs = torch.stack([R])
 Ts = torch.stack([T])
 Ks = K.expand(1, 4, 4)
 
-blenderCamera = r2n2.utils.BlenderCamera(
-    R=Rs, 
-    T=Ts, 
-    K=Ks, 
-)
+blenderCamera = r2n2.utils.BlenderCamera(device='cpu')
 
 
 def main():

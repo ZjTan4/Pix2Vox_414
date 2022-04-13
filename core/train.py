@@ -36,6 +36,7 @@ from pytorch3d.renderer import (
     PointLights,
     RasterizationSettings,
     TexturesVertex,
+    FoVPerspectiveCameras
 )
 from utils.test_camera import blenderCamera, image_grid
 
@@ -219,25 +220,32 @@ def train_net(cfg):
             else:
                 refiner_loss = encoder_loss
                     
-            # cubified_voxels = pytorch3d.ops.cubify(generated_volumes, 0.2).to('cpu')
-            # # camera = BlenderCamera(device='cpu')
-            # renderer = MeshRenderer(
-            #     rasterizer=MeshRasterizer(
-            #         cameras=blenderCamera,
-            #         # cameras=camera,
-            #         raster_settings=RasterizationSettings(),
-            #     ),
-            #     shader=HardPhongShader(
-            #         # cameras=camera,
-            #         cameras=blenderCamera,
-            #         lights=PointLights(),
-            #     )
-            # )
-            # imges = renderer(cubified_voxels)
+            cubified_voxels = pytorch3d.ops.cubify(generated_volumes, 0.2).to('cpu')
+            # camera = BlenderCamera(device='cpu')
+            cubified_voxels.textures = TexturesVertex(
+                verts_features=torch.ones_like(cubified_voxels.verts_padded(), device='cpu')
+            )
+            renderer = MeshRenderer(
+                rasterizer=MeshRasterizer(
+                    cameras=FoVPerspectiveCameras(),
+                    # cameras=camera,
+                    raster_settings=RasterizationSettings(
+                        image_size = 1,
+                        blur_radius = 0.0,
+                        faces_per_pixel = 1,
+                    ),
+                ),
+                shader=HardPhongShader(
+                    # cameras=camera,
+                    cameras=FoVPerspectiveCameras(devide = 'cpu'),
+                    lights=PointLights(),
+                )
+            )
+            imges = renderer(cubified_voxels)
             
-            # verts, faces = marching_cubes_naive(generated_volumes)
+            verts, faces = marching_cubes_naive(generated_volumes)
 
-            #
+
 
             # Gradient decent
             encoder.zero_grad()
