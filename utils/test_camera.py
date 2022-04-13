@@ -48,20 +48,23 @@ blenderCamera = r2n2.utils.BlenderCamera(
 )
 
 fovCameras = FoVPerspectiveCameras(
-    # R=Rs, 
-    # T=Ts,
+    R=Rs, 
+    T=Ts,
     # K=Ks
+    fov=fov, 
+    aspect_ratio=dist_ratio
 )
 
 # volumetric renderer
+# render_size = 576
 render_size = 224
-volume_extent_world = 3.0
+volume_extent_world = 10.0
 
 raysampler = NDCMultinomialRaysampler(
     image_width=render_size, 
     image_height=render_size,
     n_pts_per_ray=150, 
-    min_depth=0.1,
+    min_depth=0.0001,
     max_depth=volume_extent_world
 )
 raymarcher = EmissionAbsorptionRaymarcher()
@@ -71,15 +74,26 @@ vox_renderer = VolumeRenderer(
     raymarcher=raymarcher
 )
 
+torch.set_printoptions(edgeitems=32)
+
 with open("C:\\Users\\MK12_\\Source\\Pix2Vox_414\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
     array_3d = read_as_3d_array(fp)
     array_3d = torch.tensor(array_3d.data, dtype=torch.float32)
+    
+    """
+    volume = volume.squeeze().__ge__(0.5)
+    fig = plt.figure()
+    x = fig.gc(projection=)
+    """
     dens = array_3d.expand(1, 1, *array_3d.shape)
     volume = Volumes(densities=dens)
     rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
-    plt.imshow(rendered_images[0])
+    # print("rendered_img:", rendered_images[0])
 
-pass
+    # print("rendered_silhouettes", rendered_silhouettes[0])
+    plt.imshow(rendered_images[0]) 
+    plt.show()
+
 
 def image_grid(
     images,
