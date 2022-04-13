@@ -51,7 +51,7 @@ blenderCamera = r2n2.utils.BlenderCamera(
 
 
 def main():
-    model_views = [0]
+    model_views = [16]
 
     with open("../Pix2Vox/ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
         metadata_lines = fm.readlines()
@@ -88,19 +88,19 @@ def main():
         T=Ts,
         K=Ks,
         fov=fov, 
-        aspect_ratio=dist_ratio
+        aspect_ratio=dist_ratio,
     )
 
     # volumetric renderer
     # render_size = 576
     render_size = 224
-    volume_extent_world = 0.8
+    volume_extent_world = 1.5
 
     raysampler = NDCMultinomialRaysampler(
         image_width=render_size, 
         image_height=render_size,
         n_pts_per_ray=50, 
-        min_depth=0.00001,
+        min_depth=0.1,
         max_depth=volume_extent_world
     )
     raymarcher = EmissionAbsorptionRaymarcher()
