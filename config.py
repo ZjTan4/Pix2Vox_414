@@ -87,6 +87,7 @@ __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 4             # number of data workers
 # __C.TRAIN.NUM_EPOCHES                       = 250
+# __C.TRAIN.NUM_EPOCHES                       = 10
 __C.TRAIN.NUM_EPOCHES                       = 1
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4

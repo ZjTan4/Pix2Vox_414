@@ -1,12 +1,21 @@
 import pstats
+from django.shortcuts import render
 import torch
-import utils.camera as camera
 import matplotlib.pyplot as plt
 from pytorch3d.datasets import R2N2
 from pytorch3d.datasets import r2n2
 
+from pytorch3d.renderer import (
+    FoVPerspectiveCameras, 
+    VolumeRenderer,
+    NDCMultinomialRaysampler,
+    EmissionAbsorptionRaymarcher
+)
+from pytorch3d.structures import Volumes
+from binvox_rw import read_as_3d_array, read_as_coord_array
+import camera
+
 model_views = [0]
-device = 'cpu'
 
 with open("./ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
     metadata_lines = fm.readlines()
@@ -36,9 +45,41 @@ blenderCamera = r2n2.utils.BlenderCamera(
     R=Rs, 
     T=Ts, 
     K=Ks, 
-    device=device
-).to(device)
+)
 
+fovCameras = FoVPerspectiveCameras(
+    # R=Rs, 
+    # T=Ts,
+    # K=Ks
+)
+
+# volumetric renderer
+render_size = 224
+volume_extent_world = 3.0
+
+raysampler = NDCMultinomialRaysampler(
+    image_width=render_size, 
+    image_height=render_size,
+    n_pts_per_ray=150, 
+    min_depth=0.1,
+    max_depth=volume_extent_world
+)
+raymarcher = EmissionAbsorptionRaymarcher()
+
+vox_renderer = VolumeRenderer(
+    raysampler=raysampler, 
+    raymarcher=raymarcher
+)
+
+with open("C:\\Users\\MK12_\\Source\\Pix2Vox_414\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
+    array_3d = read_as_3d_array(fp)
+    array_3d = torch.tensor(array_3d.data, dtype=torch.float32)
+    dens = array_3d.expand(1, 1, *array_3d.shape)
+    volume = Volumes(densities=dens)
+    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
+    plt.imshow(rendered_images[0])
+
+pass
 
 def image_grid(
     images,
