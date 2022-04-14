@@ -6,11 +6,12 @@ from pytorch3d.datasets import R2N2
 from pytorch3d.datasets import r2n2
 import math
 from pytorch3d.renderer import (
-    FoVPerspectiveCameras, 
+    FoVPerspectiveCameras,
     VolumeRenderer,
     NDCMultinomialRaysampler,
     EmissionAbsorptionRaymarcher
 )
+from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
 from pytorch3d.structures import Volumes
 # from utils.binvox_rw import read_as_3d_array, read_as_coord_array
 # import utils.camera as camera
@@ -30,14 +31,14 @@ for i in model_views:
 RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
 R, T = camera.compute_camera_calibration(RT)
 
-    # Intrinsic matrix extracted from the Blender with slight modification to work with
-    # PyTorch3D world space. Taken from meshrcnn codebase:
-    # https://github.com/facebookresearch/meshrcnn/blob/main/shapenet/utils/coords.py
+# Intrinsic matrix extracted from the Blender with slight modification to work with
+# PyTorch3D world space. Taken from meshrcnn codebase:
+# https://github.com/facebookresearch/meshrcnn/blob/main/shapenet/utils/coords.py
 K = torch.tensor(
     [
         [2.1875, 0.0, 0.0, 0.0],
         [0.0, 2.1875, 0.0, 0.0],
-        [0.0, 0.0, -1.002002, -0.2002002],
+        [0.0, 0.0, -2.02002, -0.2002002],
         [0.0, 0.0, 1.0, 0.0],
     ]
 )
@@ -46,9 +47,9 @@ Ts = torch.stack([T])
 Ks = K.expand(1, 4, 4)
 
 blenderCamera = r2n2.utils.BlenderCamera(
-    R=Rs, 
-    T=Ts, 
-    K=Ks, 
+    R=Rs,
+    T=Ts,
+    K=Ks,
 )
 """
 def compute_extrinsic_matrix(azimuth, elevation, distance):
@@ -80,22 +81,22 @@ def compute_extrinsic_matrix(azimuth, elevation, distance):
 
     # For some reason I cannot fathom, when Blender loads a .obj file it rotates
     # the model 90 degrees about the x axis. To compensate for this quirk we roll
-    # that rotation into the extrinsic matrix 
-    
+    # that rotation into the extrinsic matrix
+
     theta_X = math.pi/2
     theta_Y = math.pi/2
     theta_Z = 0
     rot_X = torch.tensor([[1, 0, 0, 0], [0, np.cos(theta_X), -1*np.sin(theta_X), 0], [0, np.sin(theta_X), np.cos(theta_X), 0], [0, 0, 0, 1]])
     rot_Y = torch.tensor([[np.cos(theta_Y), 0, np.sin(theta_Y), 0], [0, 1, 0, 0], [-1*np.sin(theta_Y), 0, np.cos(theta_Y), 0], [0, 0, 0, 1]])
     rot_Z = torch.tensor([[np.cos(theta_Z), -1*np.sin(theta_Z), 0, 0], [np.sin(theta_Z), np.cos(theta_Z), 0 , 0], [0, 0, 0, 0], [0, 0, 0, 1]])
-    
+
     rot = torch.tensor([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
     #RT = RT.mm(rot.to(RT))
     RT = RT.mm(rot_X.to(RT))
     RT = RT.mm(rot_Y.to(RT))
     #RT = RT.mm(rot_Y.to(RT))
-    
-    
+
+
 
 
 
@@ -136,35 +137,22 @@ def main():
     Ks = K.expand(1, 4, 4)
 
     blenderCamera = r2n2.utils.BlenderCamera(
-        R=Rs, 
-        T=Ts, 
-        K=Ks, 
+        R=Rs,
+        T=Ts,
+        K=Ks,
     )
 
     fovCameras = FoVPerspectiveCameras(
-        R=Rs, 
+        R=Rs,
         T=Ts,
         K=Ks,
-        fov=fov, 
+        fov=fov,
         aspect_ratio=dist_ratio,
     )
 
-    # volumetric renderer
-    # render_size = 576
-    render_size = 224
-    volume_extent_world = 1.5
-
-    raysampler = NDCMultinomialRaysampler(
-        image_width=render_size, 
-        image_height=render_size,
-        n_pts_per_ray=50, 
-        min_depth=0.1,
-        max_depth=volume_extent_world
-    )
-    raymarcher = EmissionAbsorptionRaymarcher()
 
     vox_renderer = VolumeRenderer(
-        raysampler=raysampler, 
+        raysampler=raysampler,
         raymarcher=raymarcher
     )
     with open("../../Pix2Vox/ShapeNetVox32/02691156/1a04e3eab45ca15dd86060f189eb133/model.binvox", "rb") as fp:
@@ -172,62 +160,75 @@ def main():
     #with open("C:\\Users\\MK12_\\Source\\Pix2Vox\\ShapeNetVox32\\02691156\\1a04e3eab45ca15dd86060f189eb133\\model.binvox", "rb") as fp:
         array_3d = read_as_3d_array(fp)
         array_3d = torch.tensor(array_3d.data, dtype=torch.float32)
+    colors = torch.zeros(*array_3d.shape)
+    colors[array_3d==1] = 1
 
-        colors = torch.zeros(*array_3d.shape)
-        colors[array_3d==1] = 1
+    # b = torch.sum(colors)
 
-        b = torch.sum(colors)
+    volume_size = 32
+    colors = colors.expand(1, 3, *array_3d.shape)
+    dens = array_3d.expand(1, 1, *array_3d.shape)
+    volume = Volumes(
+        densities=dens,
+        features=colors,
+        voxel_size=(volume_extent_world/volume_size) / 2
+    )
+    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+    # print("rendered_img:", rendered_images[0])
+    # a = torch.sum(rendered_images[0])
+    # print("rendered_silhouettes", rendered_silhouettes[0])
+    plt.imshow(rendered_images[0])
 
-        volume_size = 32
-        colors = colors.expand(1, 3, *array_3d.shape)
-        dens = array_3d.expand(1, 1, *array_3d.shape)
-        volume = Volumes(
-            densities=dens, 
-            features=colors,
-            voxel_size=(volume_extent_world/volume_size)/3.5
-        )
-        rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
-        rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3,1],dim=-1)        
-        # print("rendered_img:", rendered_images[0])
-        a = torch.sum(rendered_images[0])
-        # print("rendered_silhouettes", rendered_silhouettes[0])
-        
-        clamp_and_detach = lambda x: x.clamp(0.0, 1.0).cpu().detach().numpy()
+    volume_size = 32
+    colors = colors.expand(1, 3, *array_3d.shape)
+    dens = array_3d.expand(1, 1, *array_3d.shape)
+    volume = Volumes(
+        densities=dens,
+        features=colors,
+        voxel_size=(volume_extent_world/volume_size)/3.5
+    )
+    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
+    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3,1],dim=-1)
+    # print("rendered_img:", rendered_images[0])
+    a = torch.sum(rendered_images[0])
+    # print("rendered_silhouettes", rendered_silhouettes[0])
 
-        #print("r layer:\n",rendered_images[0][100,80:120,0])
-        #print("g layer:\n",torch.sum(rendered_images[0][:,:,1]))
-        #print("b layer:\n",torch.sum(rendered_images[0][:,:,2]))
-        print(rendered_images.shape)
-        plt.imshow(rendered_images[0][:,:,:3]) 
-        
-        #plt.imshow(cv.flip(np.array(rendered_images[0][:,:,:3]),0)) 
-        plt.show()
-        
-        print(rendered_silhouettes.shape)
-        
-        plt.imshow(rendered_silhouettes[0])
-        
-        
-        """
-        print("sum:\n", torch.sum(rendered_images[0]))
-        print("image shape:",rendered_images[0].shape)
-        print("end")
-        print("rendered_silhouettes:",len(rendered_silhouettes))
-        
-        
-        print("rendered_shape:",rendered_silhouettes[1][0])
-        
-        #plt.imshow(clamp_and_detach(rendered_silhouettes[...,0])) 
-        plt.imshow(rendered_silhouettes[1][0])
-        
-        print('0:\n',rendered_silhouettes[0].shape)
-        print('1:\n',rendered_silhouettes[1].shape)
-        print('2:\n',rendered_silhouettes[2].shape)
-        print('3:\n',rendered_silhouettes[3].shape)
-        """
-        
-        plt.show()
-        print("end")        
+    clamp_and_detach = lambda x: x.clamp(0.0, 1.0).cpu().detach().numpy()
+
+    #print("r layer:\n",rendered_images[0][100,80:120,0])
+    #print("g layer:\n",torch.sum(rendered_images[0][:,:,1]))
+    #print("b layer:\n",torch.sum(rendered_images[0][:,:,2]))
+    print(rendered_images.shape)
+    plt.imshow(rendered_images[0][:,:,:3])
+
+    #plt.imshow(cv.flip(np.array(rendered_images[0][:,:,:3]),0))
+    plt.show()
+
+    print(rendered_silhouettes.shape)
+
+    plt.imshow(rendered_silhouettes[0])
+
+
+    """
+    print("sum:\n", torch.sum(rendered_images[0]))
+    print("image shape:",rendered_images[0].shape)
+    print("end")
+    print("rendered_silhouettes:",len(rendered_silhouettes))
+
+
+    print("rendered_shape:",rendered_silhouettes[1][0])
+
+    #plt.imshow(clamp_and_detach(rendered_silhouettes[...,0]))
+    plt.imshow(rendered_silhouettes[1][0])
+
+    print('0:\n',rendered_silhouettes[0].shape)
+    print('1:\n',rendered_silhouettes[1].shape)
+    print('2:\n',rendered_silhouettes[2].shape)
+    print('3:\n',rendered_silhouettes[3].shape)
+    """
+
+    plt.show()
+    print("end")
 
 
 def image_grid(
@@ -272,6 +273,3 @@ def image_grid(
             ax.imshow(im[..., 3])
         if not show_axes:
             ax.set_axis_off()
-
-if __name__ == "__main__":
-    main()
