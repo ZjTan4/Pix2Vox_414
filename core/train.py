@@ -258,6 +258,7 @@ def train_net(cfg):
                 R=R, 
                 T=T,
                 device='cuda'
+                # device='cpu'
             )
             # volumetric renderer
             render_size = 224
@@ -280,17 +281,12 @@ def train_net(cfg):
             sil_error = 0
             img_error  = 0
             for i in range(BATCH_SIZE):
-                taxonomy_name = taxonomy_names[i]
-                sample_name = sample_names[i]
                 ground_truth_volume = ground_truth_volumes[i]
                 generated_volume = generated_volumes[i]
-                
-                # gt_array_3d = torch.tensor(generated_volume.data, dtype=torch.float32)
-                # # generated volume 
-                # gv_array_3d = torch.tensor(generated_volume.data, dtype=torch.float32)
-                
+                            
                 # get the rendering for the ground truth volmue
                 colors = torch.zeros(*ground_truth_volume.shape).to('cuda')
+                # colors = torch.zeros(*ground_truth_volume.shape).to('cpu')
                 colors[ground_truth_volume==1] = 1
 
                 volume_size = 32
@@ -302,11 +298,10 @@ def train_net(cfg):
                     voxel_size=(volume_extent_world/volume_size) / 2
                 )
                 gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-                for j in range(num_views):
-                    plt.imshow(gt_rendered_images[j].detach().cpu().numpy())
                 
                 # get the rendering for the generated volume
                 colors = torch.zeros(*generated_volume.shape).to('cuda')
+                # colors = torch.zeros(*ground_truth_volume.shape).to('cpu')
                 colors[generated_volume==1] = 1
                 volume_size = 32
                 colors = colors.expand(num_views, 3, *generated_volume.shape)
@@ -317,14 +312,13 @@ def train_net(cfg):
                     voxel_size=(volume_extent_world/volume_size) / 2
                 )
                 g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-                for j in range(num_views):
-                    sil_error +=  huber(
-                        g_rendered_silhouettes[j], gt_rendered_silhouettes[j],
-                    ).abs().mean()
+                sil_error =  huber(
+                    g_rendered_silhouettes, gt_rendered_silhouettes,
+                ).abs().mean()
 
-                    img_error +=  huber(
-                        g_rendered_images[j], gt_rendered_images[j],
-                    ).abs().mean()
+                img_error =  huber(
+                    g_rendered_images, gt_rendered_images,
+                ).abs().mean()
 
             # Gradient decent
             encoder.zero_grad()
@@ -333,14 +327,17 @@ def train_net(cfg):
             merger.zero_grad()
 
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
+                encoder_loss += (sil_error + img_error)
                 encoder_loss.backward(retain_graph=True)
+                refiner_loss += (sil_error + img_error)
                 refiner_loss.backward()
-                sil_error.backward()
-                img_error.backward()
+                # sil_error.backward()
+                # img_error.backward()
             else:
+                encoder_loss += (sil_error + img_error)
                 encoder_loss.backward()
-                sil_error.backward()
-                img_error.backward()
+                # sil_error.backward()
+                # img_error.backward()
 
             encoder_solver.step()
             decoder_solver.step()

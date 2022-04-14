@@ -54,6 +54,7 @@ __C.DATASET.TEST_DATASET                    = 'ShapeNet'
 # Common
 #
 __C.CONST                                   = edict()
+# __C.CONST.DEVICE                            = 'cpu'
 __C.CONST.DEVICE                            = '0'
 __C.CONST.RNG_SEED                          = 0
 __C.CONST.IMG_W                             = 224       # Image width for input
