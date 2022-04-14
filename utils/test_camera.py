@@ -20,7 +20,7 @@ import camera
 
 
 
-model_views = [7]
+model_views = [0]
 
 with open("../Pix2Vox/ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
     metadata_lines = fm.readlines()
