@@ -17,7 +17,7 @@ from pytorch3d.structures import Volumes
 # import utils.camera as camera
 from binvox_rw import read_as_3d_array, read_as_coord_array
 import camera
-
+from math import pi
 
 
 model_views = [0]
@@ -28,6 +28,8 @@ for i in model_views:
     azim, elev, yaw, dist_ratio, fov = [
         float(v) for v in metadata_lines[i].strip().split(" ")
     ]
+    # azim = azim * pi / 180
+    # elev = elev * pi / 180
 RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
 R, T = camera.compute_camera_calibration(RT)
 
@@ -55,9 +57,8 @@ blenderCamera = r2n2.utils.BlenderCamera(
 fovCameras = FoVPerspectiveCameras(
     R=Rs, 
     T=Ts,
-    # K=Ks,
-    # fov=fov, 
-    # aspect_ratio=dist_ratio,
+    K=Ks,
+    fov=fov,
 )
 
 # volumetric renderer
@@ -94,7 +95,7 @@ with open("C:\\Users\\MK12_\\Source\\Pix2Vox\\ShapeNetVox32\\02691156\\1a04e3eab
     volume = Volumes(
         densities=dens, 
         features=colors,
-        voxel_size=(volume_extent_world/volume_size) / 2
+        voxel_size=(volume_extent_world/volume_size) / 3
     )
     rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
     # print("rendered_img:", rendered_images[0])
