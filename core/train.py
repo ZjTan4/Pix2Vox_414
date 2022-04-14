@@ -26,8 +26,11 @@ from models.decoder import Decoder
 from models.refiner import Refiner
 from models.merger import Merger
 
+import matplotlib.pyplot as plt
+
 import pytorch3d.datasets
 import pytorch3d.ops
+import pytorch3d.renderer
 from pytorch3d.ops.marching_cubes import marching_cubes_naive
 from pytorch3d.renderer import (
     FoVPerspectiveCameras, 
@@ -38,6 +41,8 @@ from pytorch3d.renderer import (
 from utils.test_camera import blenderCamera, image_grid
 from pytorch3d.structures import Volumes
 from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
+from pytorch3d.datasets import r2n2
+from utils import camera
 
 def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
@@ -46,6 +51,7 @@ def train_net(cfg):
     # Set up data augmentation
     IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
     CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
+    BATCH_SIZE = cfg.CONST.BATCH_SIZE
     train_transforms = utils.data_transforms.Compose([
         utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
         utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
@@ -233,15 +239,20 @@ def train_net(cfg):
                 refiner_loss = bce_loss(generated_volumes, ground_truth_volumes) * 10
             else:
                 refiner_loss = encoder_loss
-            elev = torch.linspace(0, 0, 4)
+
+            num_views = 4
+            dist_ratio = 2.7
+            elev = torch.linspace(0, 0, num_views)
             azim = torch.linspace(-180, 180, num_views) + 180.0
-            RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
-            R, T = camera.compute_camera_calibration(RT)
-            Rs = torch.stack([R])
-            Ts = torch.stack([T])
+            # RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
+            # R, T = camera.compute_camera_calibration(RT)
+            # Rs = torch.stack([R])
+            # Ts = torch.stack([T])
+            R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
             fovCameras = FoVPerspectiveCameras(
-                R=Rs, 
-                T=Ts,
+                R=R, 
+                T=T,
+                device='cuda'
             )
             # volumetric renderer
             render_size = 224
@@ -261,7 +272,7 @@ def train_net(cfg):
                 raysampler=raysampler, 
                 raymarcher=raymarcher
             )
-            for i in range(batch_size):
+            for i in range(BATCH_SIZE):
                 taxonomy_name = taxonomy_names[i]
                 sample_name = sample_names[i]
                 ground_truth_volume = ground_truth_volumes[i]
@@ -272,25 +283,27 @@ def train_net(cfg):
                 # gv_array_3d = torch.tensor(generated_volume.data, dtype=torch.float32)
                 
                 # get the rendering for the ground truth volmue
-                colors = torch.zeros(*ground_truth_volume.shape)
+                colors = torch.zeros(*ground_truth_volume.shape).to('cuda')
                 colors[ground_truth_volume==1] = 1
 
                 volume_size = 32
-                colors = colors.expand(1, 3, *ground_truth_volume.shape)
-                dens = ground_truth_volume.expand(1, 1, *ground_truth_volume.shape)
+                colors = colors.expand(num_views, 3, *ground_truth_volume.shape)
+                dens = ground_truth_volume.expand(num_views, 1, *ground_truth_volume.shape)
                 volume = Volumes(
                     densities=dens, 
                     features=colors,
                     voxel_size=(volume_extent_world/volume_size) / 2
                 )
                 gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+                for j in range(num_views):
+                    plt.imshow(gt_rendered_images[j].detach().cpu().numpy())
                 
                 # get the rendering for the generated volume
-                colors = torch.zeros(*generated_volume.shape)
+                colors = torch.zeros(*generated_volume.shape).to('cuda')
                 colors[generated_volume==1] = 1
                 volume_size = 32
-                colors = colors.expand(1, 3, *generated_volume.shape)
-                dens = generated_volume.expand(1, 1, *generated_volume.shape)
+                colors = colors.expand(num_views, 3, *generated_volume.shape)
+                dens = generated_volume.expand(num_views, 1, *generated_volume.shape)
                 volume = Volumes(
                     densities=dens, 
                     features=colors,
