@@ -30,12 +30,10 @@ import pytorch3d.datasets
 import pytorch3d.ops
 from pytorch3d.ops.marching_cubes import marching_cubes_naive
 from pytorch3d.renderer import (
-    HardPhongShader,
-    MeshRasterizer,
-    MeshRenderer,
-    PointLights,
-    RasterizationSettings,
-    TexturesVertex,
+    FoVPerspectiveCameras, 
+    VolumeRenderer,
+    NDCMultinomialRaysampler,
+    EmissionAbsorptionRaymarcher
 )
 from utils.test_camera import blenderCamera, image_grid
 
@@ -62,6 +60,21 @@ def train_net(cfg):
         utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
+    # volumetric renderer
+    # render_size = 576
+    volume_extent_world = 1.5
+    raysampler = NDCMultinomialRaysampler(
+        image_width=IMG_SIZE[1], 
+        image_height=IMG_SIZE[0],
+        n_pts_per_ray=50, 
+        min_depth=0.1,
+        max_depth=volume_extent_world
+    )
+    raymarcher = EmissionAbsorptionRaymarcher()
+    vox_renderer = VolumeRenderer(
+        raysampler=raysampler, 
+        raymarcher=raymarcher
+    )
 
     # Set up data loader
     train_dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TRAIN_DATASET](cfg)
@@ -219,25 +232,7 @@ def train_net(cfg):
             else:
                 refiner_loss = encoder_loss
                     
-            # cubified_voxels = pytorch3d.ops.cubify(generated_volumes, 0.2).to('cpu')
-            # # camera = BlenderCamera(device='cpu')
-            # renderer = MeshRenderer(
-            #     rasterizer=MeshRasterizer(
-            #         cameras=blenderCamera,
-            #         # cameras=camera,
-            #         raster_settings=RasterizationSettings(),
-            #     ),
-            #     shader=HardPhongShader(
-            #         # cameras=camera,
-            #         cameras=blenderCamera,
-            #         lights=PointLights(),
-            #     )
-            # )
-            # imges = renderer(cubified_voxels)
             
-            # verts, faces = marching_cubes_naive(generated_volumes)
-
-            #
 
             # Gradient decent
             encoder.zero_grad()
