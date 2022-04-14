@@ -43,7 +43,12 @@ from pytorch3d.structures import Volumes
 from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
 from pytorch3d.datasets import r2n2
 from utils import camera
-
+# A helper function for evaluating the smooth L1 (huber) loss
+# between the rendered silhouettes and colors.
+def huber(x, y, scaling=0.1):
+    diff_sq = (x - y) ** 2
+    loss = ((1 + diff_sq / (scaling**2)).clamp(1e-4).sqrt() - 1) * float(scaling)
+    return loss
 def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
@@ -272,6 +277,8 @@ def train_net(cfg):
                 raysampler=raysampler, 
                 raymarcher=raymarcher
             )
+            sil_error = 0
+            img_error  = 0
             for i in range(BATCH_SIZE):
                 taxonomy_name = taxonomy_names[i]
                 sample_name = sample_names[i]
@@ -310,10 +317,14 @@ def train_net(cfg):
                     voxel_size=(volume_extent_world/volume_size) / 2
                 )
                 g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+                for j in range(num_views):
+                    sil_error +=  huber(
+                        g_rendered_silhouettes[j], gt_rendered_silhouettes[j],
+                    ).abs().mean()
 
-                
-                            
-
+                    img_error +=  huber(
+                        g_rendered_images[j], gt_rendered_images[j],
+                    ).abs().mean()
 
             # Gradient decent
             encoder.zero_grad()
@@ -324,8 +335,12 @@ def train_net(cfg):
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
                 encoder_loss.backward(retain_graph=True)
                 refiner_loss.backward()
+                sil_error.backward()
+                img_error.backward()
             else:
                 encoder_loss.backward()
+                sil_error.backward()
+                img_error.backward()
 
             encoder_solver.step()
             decoder_solver.step()
