@@ -38,7 +38,6 @@ from pytorch3d.renderer import (
     NDCMultinomialRaysampler,
     EmissionAbsorptionRaymarcher
 )
-from utils.test_camera import blenderCamera, image_grid
 from pytorch3d.structures import Volumes
 from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
 from pytorch3d.datasets import r2n2

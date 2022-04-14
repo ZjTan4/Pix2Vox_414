@@ -14,8 +14,8 @@ from pytorch3d.renderer import (
 from pytorch3d.structures import Volumes
 # from utils.binvox_rw import read_as_3d_array, read_as_coord_array
 # import utils.camera as camera
-from binvox_rw import read_as_3d_array, read_as_coord_array
-import camera
+from utils.binvox_rw import read_as_3d_array, read_as_coord_array
+import utils.camera as camera
 import numpy as np
 import cv2 as cv
 
