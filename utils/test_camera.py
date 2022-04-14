@@ -11,6 +11,7 @@ from pytorch3d.renderer import (
     NDCMultinomialRaysampler,
     EmissionAbsorptionRaymarcher
 )
+from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
 from pytorch3d.structures import Volumes
 # from utils.binvox_rw import read_as_3d_array, read_as_coord_array
 # import utils.camera as camera
@@ -19,7 +20,7 @@ import camera
 
 
 
-model_views = [16]
+model_views = [7]
 
 with open("../Pix2Vox/ShapeNetRendering/02691156/1a04e3eab45ca15dd86060f189eb133/rendering/rendering_metadata.txt") as fm:
     metadata_lines = fm.readlines()
@@ -85,7 +86,7 @@ with open("C:\\Users\\MK12_\\Source\\Pix2Vox\\ShapeNetVox32\\02691156\\1a04e3eab
     colors = torch.zeros(*array_3d.shape)
     colors[array_3d==1] = 1
 
-    b = torch.sum(colors)
+    # b = torch.sum(colors)
 
     volume_size = 32
     colors = colors.expand(1, 3, *array_3d.shape)
@@ -95,11 +96,12 @@ with open("C:\\Users\\MK12_\\Source\\Pix2Vox\\ShapeNetVox32\\02691156\\1a04e3eab
         features=colors,
         voxel_size=(volume_extent_world/volume_size) / 2
     )
-    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
+    rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
     # print("rendered_img:", rendered_images[0])
-    a = torch.sum(rendered_images[0])
+    # a = torch.sum(rendered_images[0])
     # print("rendered_silhouettes", rendered_silhouettes[0])
-    plt.imshow(rendered_silhouettes[0, ..., 0]) 
+    plt.imshow(rendered_images[0])
+
     plt.show()
     print("end")
 
