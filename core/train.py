@@ -244,78 +244,78 @@ def train_net(cfg):
             else:
                 refiner_loss = encoder_loss
 
-            num_views = 4
-            dist_ratio = 2.7
-            elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
-            azim = torch.linspace(-180, 180, num_views) + 180.0
-            azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
-            # RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
-            # R, T = camera.compute_camera_calibration(RT)
-            # Rs = torch.stack([R])
-            # Ts = torch.stack([T])
-            R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
-            fovCameras = FoVPerspectiveCameras(
-                R=R, 
-                T=T,
-                device='cuda'
-                # device='cpu'
-            )
-            # volumetric renderer
-            render_size = 224
-            volume_extent_world = 1.5
-            # initialize the raysampler
-            raysampler = NDCMultinomialRaysampler(
-                image_width=render_size, 
-                image_height=render_size,
-                n_pts_per_ray=50, 
-                min_depth=0.1,
-                max_depth=volume_extent_world
-            )
-            # initialize the raymathcer
-            raymarcher = EmissionAbsorptionRaymarcher()
-            # initialize the vox renderer
-            vox_renderer = VolumeRenderer(
-                raysampler=raysampler, 
-                raymarcher=raymarcher
-            )
+            # num_views = 4
+            # dist_ratio = 2.7
+            # elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
+            # azim = torch.linspace(-180, 180, num_views) + 180.0
+            # azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
+            # # RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
+            # # R, T = camera.compute_camera_calibration(RT)
+            # # Rs = torch.stack([R])
+            # # Ts = torch.stack([T])
+            # R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
+            # fovCameras = FoVPerspectiveCameras(
+            #     R=R, 
+            #     T=T,
+            #     device='cuda'
+            #     # device='cpu'
+            # )
+            # # volumetric renderer
+            # render_size = 224
+            # volume_extent_world = 1.5
+            # # initialize the raysampler
+            # raysampler = NDCMultinomialRaysampler(
+            #     image_width=render_size, 
+            #     image_height=render_size,
+            #     n_pts_per_ray=50, 
+            #     min_depth=0.1,
+            #     max_depth=volume_extent_world
+            # )
+            # # initialize the raymathcer
+            # raymarcher = EmissionAbsorptionRaymarcher()
+            # # initialize the vox renderer
+            # vox_renderer = VolumeRenderer(
+            #     raysampler=raysampler, 
+            #     raymarcher=raymarcher
+            # )
             
-            volume_size = 32            
-            # get the rendering for the ground truth volmue
-            # (batch, 32, 32, 32)
-            colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
-            # colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
-            colors[ground_truth_volumes != 0] = 1
-            colors = colors[:, None, :, :, :]
-            colors = colors.repeat(4, 3, 1, 1, 1)
+            # volume_size = 32            
+            # # get the rendering for the ground truth volmue
+            # # (batch, 32, 32, 32)
+            # colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
+            # # colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
+            # colors[ground_truth_volumes != 0] = 1
+            # colors = colors[:, None, :, :, :]
+            # colors = colors.repeat(4, 3, 1, 1, 1)
              
-            ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
-            volume = Volumes(
-                densities=ground_truth_volumes, 
-                features=colors,
-                voxel_size=(volume_extent_world/volume_size) / 2
-            )
-            gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+            # ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
+            # volume = Volumes(
+            #     densities=ground_truth_volumes, 
+            #     features=colors,
+            #     voxel_size=(volume_extent_world/volume_size) / 2
+            # )
+            # gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
             
-            # get the rendering for the generated volume
-            colors = torch.zeros(*generated_volumes.shape).to('cuda')
-            # colors = torch.zeros(*generated_volumes.shape).to('cpu')
-            colors[generated_volumes != 0] = 1
-            colors = colors[:, None, :, :, :]
-            colors = colors.repeat(4, 3, 1, 1, 1)
-            generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
-            volume = Volumes(
-                densities=generated_volumes, 
-                features=colors,
-                voxel_size=(volume_extent_world/volume_size) / 2
-            )
-            g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-            sil_error =  huber(
-                g_rendered_silhouettes, gt_rendered_silhouettes,
-            ).abs().mean()
+            # # get the rendering for the generated volume
+            # colors = torch.zeros(*generated_volumes.shape).to('cuda')
+            # # colors = torch.zeros(*generated_volumes.shape).to('cpu')
+            # colors[generated_volumes != 0] = 1
+            # colors = colors[:, None, :, :, :]
+            # colors = colors.repeat(4, 3, 1, 1, 1)
+            # generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
+            # volume = Volumes(
+            #     densities=generated_volumes, 
+            #     features=colors,
+            #     voxel_size=(volume_extent_world/volume_size) / 2
+            # )
+            # g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+            # sil_error =  huber(
+            #     g_rendered_silhouettes, gt_rendered_silhouettes,
+            # ).abs().mean()
 
-            img_error =  huber(
-                g_rendered_images, gt_rendered_images,
-            ).abs().mean()
+            # img_error =  huber(
+            #     g_rendered_images, gt_rendered_images,
+            # ).abs().mean()
 
             # Gradient decent
             encoder.zero_grad()
@@ -324,14 +324,14 @@ def train_net(cfg):
             merger.zero_grad()
 
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
-                encoder_loss += (sil_error + img_error)
+                # encoder_loss += (sil_error + img_error)
                 encoder_loss.backward(retain_graph=True)
-                refiner_loss += (sil_error + img_error)
+                # refiner_loss += (sil_error + img_error)
                 refiner_loss.backward()
                 # sil_error.backward()
                 # img_error.backward()
             else:
-                encoder_loss += (sil_error + img_error)
+                # encoder_loss += (sil_error + img_error)
                 encoder_loss.backward()
                 # sil_error.backward()
                 # img_error.backward()
