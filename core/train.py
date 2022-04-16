@@ -249,10 +249,7 @@ def train_net(cfg):
             elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
             azim = torch.linspace(-180, 180, num_views) + 180.0
             azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
-            # RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
-            # R, T = camera.compute_camera_calibration(RT)
-            # Rs = torch.stack([R])
-            # Ts = torch.stack([T])
+
             R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
             fovCameras = FoVPerspectiveCameras(
                 R=R, 
@@ -328,13 +325,10 @@ def train_net(cfg):
                 encoder_loss.backward(retain_graph=True)
                 refiner_loss += (sil_error + img_error)
                 refiner_loss.backward()
-                # sil_error.backward()
-                # img_error.backward()
+
             else:
                 encoder_loss += (sil_error + img_error)
                 encoder_loss.backward()
-                # sil_error.backward()
-                # img_error.backward()
 
             encoder_solver.step()
             decoder_solver.step()
