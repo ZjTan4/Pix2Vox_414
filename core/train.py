@@ -257,8 +257,8 @@ def train_net(cfg):
             fovCameras = FoVPerspectiveCameras(
                 R=R, 
                 T=T,
-                # device='cuda'
-                device='cpu'
+                device='cuda'
+                # device='cpu'
             )
             # volumetric renderer
             render_size = 224
@@ -278,39 +278,33 @@ def train_net(cfg):
                 raysampler=raysampler, 
                 raymarcher=raymarcher
             )
-            # sil_error = 0
-            # img_error  = 0
-            # for i in range(BATCH_SIZE):
-            # ground_truth_volume = ground_truth_volumes
-            # generated_volume = generated_volumes
             
             volume_size = 32            
             # get the rendering for the ground truth volmue
             # (batch, 32, 32, 32)
-            # colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
-            colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
+            colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
+            # colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
             colors[ground_truth_volumes != 0] = 1
             colors = colors[:, None, :, :, :]
             colors = colors.repeat(4, 3, 1, 1, 1)
              
-            # colors = colors.expand(num_views, 3, *ground_truth_volumes.shape)
-            dens = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
+            ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
             volume = Volumes(
-                densities=dens, 
+                densities=ground_truth_volumes, 
                 features=colors,
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
             gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
             
             # get the rendering for the generated volume
-            # colors = torch.zeros(*generated_volumes.shape).to('cuda')
-            colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
+            colors = torch.zeros(*generated_volumes.shape).to('cuda')
+            # colors = torch.zeros(*generated_volumes.shape).to('cpu')
             colors[generated_volumes != 0] = 1
             colors = colors[:, None, :, :, :]
             colors = colors.repeat(4, 3, 1, 1, 1)
-            dens = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
+            generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
             volume = Volumes(
-                densities=dens, 
+                densities=generated_volumes, 
                 features=colors,
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
