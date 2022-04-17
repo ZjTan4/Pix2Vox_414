@@ -12,6 +12,7 @@ from pytorch3d.renderer import (
     EmissionAbsorptionRaymarcher
 )
 from pytorch3d.structures import Volumes
+import pytorch3d
 # from utils.binvox_rw import read_as_3d_array, read_as_coord_array
 # import utils.camera as camera
 from utils.binvox_rw import read_as_3d_array, read_as_coord_array
@@ -74,8 +75,8 @@ def main():
             float(v) for v in metadata_lines[i].strip().split(" ")
         ]
     print([azim, elev, yaw, dist_ratio, fov])
-    RT = compute_extrinsic_matrix(azim, elev, dist_ratio)
-    R, T = camera.compute_camera_calibration(RT)
+
+    R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
 
     # Intrinsic matrix extracted from the Blender with slight modification to work with
     # PyTorch3D world space. Taken from meshrcnn codebase:
@@ -96,8 +97,10 @@ def main():
         [0.0, 0.0, -1.0, 0.0],
     ])
     """
-    Rs = torch.stack([R])
-    Ts = torch.stack([T])
+    # Rs = torch.stack([R])
+    Rs = R
+    Ts = T
+    # Ts = torch.stack([T])
     Ks = K.expand(1, 4, 4)
 
     blenderCamera = r2n2.utils.BlenderCamera(
@@ -144,21 +147,23 @@ def main():
         b = torch.sum(colors)
 
         volume_size = 32
-        colors = colors.expand(1, 3, *array_3d.shape)
+        # colors = colors.expand(1, 3, *array_3d.shape)
         dens = array_3d.expand(1, 1, *array_3d.shape)
         volume = Volumes(
             densities=dens, 
-            features=colors,
+            # features=colors,
             voxel_size=(volume_extent_world/volume_size)/3.5
         )
         rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)
-        rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3,1],dim=-1)        
+        # rendered_images, rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3,1],dim=-1)        
+        rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
+
         # print("rendered_img:", rendered_images[0])
         a = torch.sum(rendered_images[0])
         # print("rendered_silhouettes", rendered_silhouettes[0])
         
         print(rendered_images.shape)
-        plt.imshow(rendered_images[0][:,:,:3]) 
+        plt.imshow(rendered_images[0]) 
         plt.show()
         
         print(rendered_silhouettes.shape)
