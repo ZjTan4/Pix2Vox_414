@@ -5,7 +5,6 @@
 import os
 import random
 from xml.etree.ElementPath import ops
-from django.shortcuts import render
 import torch
 import torch.backends.cudnn
 import torch.utils.data
@@ -309,9 +308,9 @@ def train_net(cfg):
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
             g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-            sil_error =  huber(
-                g_rendered_silhouettes, gt_rendered_silhouettes,
-            ).abs().mean()
+            #sil_error =  huber(
+                #g_rendered_silhouettes, gt_rendered_silhouettes,
+            #).abs().mean()
 
             img_error =  huber(
                 g_rendered_images, gt_rendered_images,
@@ -324,14 +323,21 @@ def train_net(cfg):
             merger.zero_grad()
 
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
-                encoder_loss += (sil_error + img_error)
+
+                #encoder_loss += (sil_error + img_error)
+                encoder_loss += (img_error)
+
                 encoder_loss.backward(retain_graph=True)
-                refiner_loss += (sil_error + img_error)
+                #refiner_loss += (sil_error + img_error)
+                refiner_loss += (img_error)
+
                 refiner_loss.backward()
                 # sil_error.backward()
                 # img_error.backward()
             else:
-                encoder_loss += (sil_error + img_error)
+                #encoder_loss += (sil_error + img_error)
+                encoder_loss += (img_error)
+
                 encoder_loss.backward()
                 # sil_error.backward()
                 # img_error.backward()
