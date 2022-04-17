@@ -26,6 +26,7 @@ from models.refiner import Refiner
 from models.merger import Merger
 
 import matplotlib.pyplot as plt
+import matplotlib
 
 import pytorch3d.datasets
 import pytorch3d.ops
@@ -41,15 +42,19 @@ from pytorch3d.structures import Volumes
 from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
 from pytorch3d.datasets import r2n2
 from utils import camera
+
 # A helper function for evaluating the smooth L1 (huber) loss
 # between the rendered silhouettes and colors.
 def huber(x, y, scaling=0.1):
     diff_sq = (x - y) ** 2
     loss = ((1 + diff_sq / (scaling**2)).clamp(1e-4).sqrt() - 1) * float(scaling)
     return loss
+
 def train_net(cfg):
     # Enable the inbuilt cudnn auto-tuner to find the best algorithm to use
     torch.backends.cudnn.benchmark = True
+
+    matplotlib.use('tkagg')
 
     # Set up data augmentation
     IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
@@ -244,14 +249,12 @@ def train_net(cfg):
                 refiner_loss = encoder_loss
 
             num_views = 4
-            dist_ratio = 2.7
+            # dist_ratio = 2.7
+            dist_ratio = 1
             elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
             azim = torch.linspace(-180, 180, num_views) + 180.0
             azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
-            # RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
-            # R, T = camera.compute_camera_calibration(RT)
-            # Rs = torch.stack([R])
-            # Ts = torch.stack([T])
+
             R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
             fovCameras = FoVPerspectiveCameras(
                 R=R, 
@@ -281,37 +284,44 @@ def train_net(cfg):
             volume_size = 32            
             # get the rendering for the ground truth volmue
             # (batch, 32, 32, 32)
-            colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
-            # colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
-            colors[ground_truth_volumes != 0] = 1
-            colors = colors[:, None, :, :, :]
-            colors = colors.repeat(4, 3, 1, 1, 1)
-             
+            # colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
+            # # colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
+            # colors[ground_truth_volumes != 0] = 1
+            # colors = colors[:, None, :, :, :]
+            # colors = colors.repeat(4, 3, 1, 1, 1)
+            show_image_iter = 500
             ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
             volume = Volumes(
                 densities=ground_truth_volumes, 
-                features=colors,
+                # features=colors,
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
-            gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-            
+            # gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+            gt_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
+            if batch_idx == show_image_iter:
+                plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
+                plt.show()
             # get the rendering for the generated volume
-            colors = torch.zeros(*generated_volumes.shape).to('cuda')
-            # colors = torch.zeros(*generated_volumes.shape).to('cpu')
-            colors[generated_volumes != 0] = 1
-            colors = colors[:, None, :, :, :]
-            colors = colors.repeat(4, 3, 1, 1, 1)
+            # colors = torch.zeros(*generated_volumes.shape).to('cuda')
+            # # colors = torch.zeros(*generated_volumes.shape).to('cpu')
+            # colors[generated_volumes != 0] = 1
+            # colors = colors[:, None, :, :, :]
+            # colors = colors.repeat(4, 3, 1, 1, 1)
             generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
             volume = Volumes(
                 densities=generated_volumes, 
-                features=colors,
+                # features=colors,
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
-            g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-            #sil_error =  huber(
-                #g_rendered_silhouettes, gt_rendered_silhouettes,
-            #).abs().mean()
 
+            # g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+            g_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
+            # sil_error =  huber(
+            #     g_rendered_silhouettes, gt_rendered_silhouettes,
+            # ).abs().mean()
+            if batch_idx == show_image_iter:
+                plt.imshow(g_rendered_images[0].detach().cpu().numpy())
+                plt.show()
             img_error =  huber(
                 g_rendered_images, gt_rendered_images,
             ).abs().mean()
@@ -332,15 +342,11 @@ def train_net(cfg):
                 refiner_loss += (img_error)
 
                 refiner_loss.backward()
-                # sil_error.backward()
-                # img_error.backward()
-            else:
-                #encoder_loss += (sil_error + img_error)
-                encoder_loss += (img_error)
 
+            else:
+                # encoder_loss += (sil_error + img_error)
+                encoder_loss += (img_error * 10)
                 encoder_loss.backward()
-                # sil_error.backward()
-                # img_error.backward()
 
             encoder_solver.step()
             decoder_solver.step()
