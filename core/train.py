@@ -249,7 +249,6 @@ def train_net(cfg):
                 refiner_loss = encoder_loss
 
             num_views = 4
-            # dist_ratio = 2.7
             dist_ratio = 1
             elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
             azim = torch.linspace(-180, 180, num_views) + 180.0
@@ -284,11 +283,6 @@ def train_net(cfg):
             volume_size = 32            
             # get the rendering for the ground truth volmue
             # (batch, 32, 32, 32)
-            # colors = torch.zeros(*ground_truth_volumes.shape).to('cuda')
-            # # colors = torch.zeros(*ground_truth_volumes.shape).to('cpu')
-            # colors[ground_truth_volumes != 0] = 1
-            # colors = colors[:, None, :, :, :]
-            # colors = colors.repeat(4, 3, 1, 1, 1)
             show_image_iter = 500
             ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
             volume = Volumes(
@@ -301,12 +295,8 @@ def train_net(cfg):
             if batch_idx == show_image_iter:
                 plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
                 plt.show()
+
             # get the rendering for the generated volume
-            # colors = torch.zeros(*generated_volumes.shape).to('cuda')
-            # # colors = torch.zeros(*generated_volumes.shape).to('cpu')
-            # colors[generated_volumes != 0] = 1
-            # colors = colors[:, None, :, :, :]
-            # colors = colors.repeat(4, 3, 1, 1, 1)
             generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
             volume = Volumes(
                 densities=generated_volumes, 
@@ -364,7 +354,8 @@ def train_net(cfg):
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
-            print(
+            if batch_idx % 50 == 0:
+                print(
                 '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) EDLoss = %.4f RLoss = %.4f'
                 % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
                    data_time.val, encoder_loss.item(), refiner_loss.item()))
