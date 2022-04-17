@@ -253,17 +253,10 @@ def train_net(cfg):
             elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
             azim = torch.linspace(-180, 180, num_views) + 180.0
             azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
-
-            R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
-            fovCameras = FoVPerspectiveCameras(
-                R=R, 
-                T=T,
-                device='cuda'
-                # device='cpu'
-            )
-            # volumetric renderer
             render_size = 224
             volume_extent_world = 1.5
+            
+            # volumetric renderer
             # initialize the raysampler
             raysampler = NDCMultinomialRaysampler(
                 image_width=render_size, 
@@ -279,8 +272,21 @@ def train_net(cfg):
                 raysampler=raysampler, 
                 raymarcher=raymarcher
             )
+            volume_size = 32                        
             
-            volume_size = 32            
+            img_error = 0
+            for i in range(num_views):
+                R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev[i], azim=azim[i])
+                fovCameras = FoVPerspectiveCameras(
+                    R=R, 
+                    T=T,
+                    device='cuda'
+                    # device='cpu'
+                )                
+            
+            R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
+            
+            
             # get the rendering for the ground truth volmue
             # (batch, 32, 32, 32)
             show_image_iter = 500
