@@ -292,9 +292,9 @@ def train_net(cfg):
             )
             # gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
             gt_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
-            if batch_idx == show_image_iter:
-                plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
-                plt.show()
+            # if batch_idx == show_image_iter:
+            #     plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
+            #     plt.show()
 
             # get the rendering for the generated volume
             generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
@@ -309,9 +309,9 @@ def train_net(cfg):
             # sil_error =  huber(
             #     g_rendered_silhouettes, gt_rendered_silhouettes,
             # ).abs().mean()
-            if batch_idx == show_image_iter:
-                plt.imshow(g_rendered_images[0].detach().cpu().numpy())
-                plt.show()
+            # if batch_idx == show_image_iter:
+            #     plt.imshow(g_rendered_images[0].detach().cpu().numpy())
+            #     plt.show()
             img_error =  huber(
                 g_rendered_images, gt_rendered_images,
             ).abs().mean()
@@ -323,16 +323,13 @@ def train_net(cfg):
             merger.zero_grad()
 
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
-
                 #encoder_loss += (sil_error + img_error)
                 encoder_loss += (img_error)
-
                 encoder_loss.backward(retain_graph=True)
+
                 #refiner_loss += (sil_error + img_error)
                 refiner_loss += (img_error)
-
                 refiner_loss.backward()
-
             else:
                 # encoder_loss += (sil_error + img_error)
                 encoder_loss += (img_error * 10)
@@ -354,11 +351,11 @@ def train_net(cfg):
             # Tick / tock
             batch_time.update(time() - batch_end_time)
             batch_end_time = time()
-            if batch_idx % 50 == 0:
-                print(
-                '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) EDLoss = %.4f RLoss = %.4f'
-                % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
-                   data_time.val, encoder_loss.item(), refiner_loss.item()))
+            # if (batch_idx + 1) % 50 == 0:
+            #     print(
+            #     '[INFO] %s [Epoch %d/%d][Batch %d/%d] BatchTime = %.3f (s) DataTime = %.3f (s) EDLoss = %.4f RLoss = %.4f'
+            #     % (dt.now(), epoch_idx + 1, cfg.TRAIN.NUM_EPOCHES, batch_idx + 1, n_batches, batch_time.val,
+            #        data_time.val, encoder_loss.item(), refiner_loss.item()))
 
         # Append epoch loss to TensorBoard
         train_writer.add_scalar('EncoderDecoder/EpochLoss', encoder_losses.avg, epoch_idx + 1)
