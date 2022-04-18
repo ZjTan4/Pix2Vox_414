@@ -29,14 +29,14 @@ class Refiner(torch.nn.Module):
             torch.nn.LeakyReLU(cfg.NETWORK.LEAKY_VALUE),
             torch.nn.MaxPool3d(kernel_size=2)
         )
-        self.layer4 = torch.nn.Sequential(
-            torch.nn.Linear(8192, 2048),
-            torch.nn.ReLU()
-        )
-        self.layer5 = torch.nn.Sequential(
-            torch.nn.Linear(2048, 8192),
-            torch.nn.ReLU()
-        )
+        # self.layer4 = torch.nn.Sequential(
+        #     torch.nn.Linear(8192, 2048),
+        #     torch.nn.ReLU()
+        # )
+        # self.layer5 = torch.nn.Sequential(
+        #     torch.nn.Linear(2048, 8192),
+        #     torch.nn.ReLU()
+        # )
         self.layer6 = torch.nn.Sequential(
             torch.nn.ConvTranspose3d(128, 64, kernel_size=4, stride=2, bias=cfg.NETWORK.TCONV_USE_BIAS, padding=1),
             torch.nn.BatchNorm3d(64),
@@ -61,9 +61,9 @@ class Refiner(torch.nn.Module):
         # print(volumes_8_l.size())        # torch.Size([batch_size, 64, 8, 8, 8])
         volumes_4_l = self.layer3(volumes_8_l)
         # print(volumes_4_l.size())        # torch.Size([batch_size, 128, 4, 4, 4])
-        flatten_features = self.layer4(volumes_4_l.view(-1, 8192))
-        # print(flatten_features.size())   # torch.Size([batch_size, 2048])
-        flatten_features = self.layer5(flatten_features)
+        # flatten_features = self.layer4(volumes_4_l.view(-1, 8192))
+        # # print(flatten_features.size())   # torch.Size([batch_size, 2048])
+        # flatten_features = self.layer5(flatten_features)
         # print(flatten_features.size())   # torch.Size([batch_size, 8192])
         volumes_4_r = volumes_4_l + flatten_features.view(-1, 128, 4, 4, 4)
         # print(volumes_4_r.size())        # torch.Size([batch_size, 128, 4, 4, 4])
