@@ -27,23 +27,6 @@ from models.merger import Merger
 
 import matplotlib.pyplot as plt
 
-# import pytorch3d.datasets
-# import pytorch3d.ops
-# import pytorch3d.renderer
-# from pytorch3d.ops.marching_cubes import marching_cubes_naive
-# from pytorch3d.renderer import (
-#     FoVPerspectiveCameras, 
-#     VolumeRenderer,
-#     NDCMultinomialRaysampler,
-#     EmissionAbsorptionRaymarcher
-# )
-# from utils.test_camera import blenderCamera, image_grid
-# from pytorch3d.structures import Volumes
-# from pytorch3d.renderer.implicit.utils import ray_bundle_to_ray_points
-# from pytorch3d.datasets import r2n2
-# from utils import camera
-# A helper function for evaluating the smooth L1 (huber) loss
-# between the rendered silhouettes and colors.
 def huber(x, y, scaling=0.1):
     diff_sq = (x - y) ** 2
     loss = ((1 + diff_sq / (scaling**2)).clamp(1e-4).sqrt() - 1) * float(scaling)
@@ -55,7 +38,6 @@ def train_net(cfg):
     # Set up data augmentation
     IMG_SIZE = cfg.CONST.IMG_H, cfg.CONST.IMG_W
     CROP_SIZE = cfg.CONST.CROP_IMG_H, cfg.CONST.CROP_IMG_W
-    BATCH_SIZE = cfg.CONST.BATCH_SIZE
     train_transforms = utils.data_transforms.Compose([
         utils.data_transforms.RandomCrop(IMG_SIZE, CROP_SIZE),
         utils.data_transforms.RandomBackground(cfg.TRAIN.RANDOM_BG_COLOR_RANGE),
