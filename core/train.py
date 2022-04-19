@@ -72,21 +72,6 @@ def train_net(cfg):
         utils.data_transforms.Normalize(mean=cfg.DATASET.MEAN, std=cfg.DATASET.STD),
         utils.data_transforms.ToTensor(),
     ])
-    # volumetric renderer
-    # render_size = 576
-    # volume_extent_world = 1.5
-    # raysampler = NDCMultinomialRaysampler(
-    #     image_width=IMG_SIZE[1], 
-    #     image_height=IMG_SIZE[0],
-    #     n_pts_per_ray=50, 
-    #     min_depth=0.1,
-    #     max_depth=volume_extent_world
-    # )
-    # raymarcher = EmissionAbsorptionRaymarcher()
-    # vox_renderer = VolumeRenderer(
-    #     raysampler=raysampler, 
-    #     raymarcher=raymarcher
-    # )
 
     # Set up data loader
     train_dataset_loader = utils.data_loaders.DATASET_LOADER_MAPPING[cfg.DATASET.TRAIN_DATASET](cfg)
@@ -243,87 +228,6 @@ def train_net(cfg):
                 refiner_loss = bce_loss(generated_volumes, ground_truth_volumes) * 10
             else:
                 refiner_loss = encoder_loss
-
-            # num_views = 4
-            # dist_ratio = 2.7
-            # elev = torch.linspace(0, 0, num_views)
-            # azim = torch.linspace(-180, 180, num_views) + 180.0
-            # # RT = r2n2.utils.compute_extrinsic_matrix(azim, elev, dist_ratio)
-            # # R, T = camera.compute_camera_calibration(RT)
-            # # Rs = torch.stack([R])
-            # # Ts = torch.stack([T])
-            # R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
-            # fovCameras = FoVPerspectiveCameras(
-            #     R=R, 
-            #     T=T,
-            #     device='cuda'
-            # )
-            # # volumetric renderer
-            # render_size = 224
-            # volume_extent_world = 1.5
-            # # initialize the raysampler
-            # raysampler = NDCMultinomialRaysampler(
-            #     image_width=render_size, 
-            #     image_height=render_size,
-            #     n_pts_per_ray=50, 
-            #     min_depth=0.1,
-            #     max_depth=volume_extent_world
-            # )
-            # # initialize the raymathcer
-            # raymarcher = EmissionAbsorptionRaymarcher()
-            # # initialize the vox renderer
-            # vox_renderer = VolumeRenderer(
-            #     raysampler=raysampler, 
-            #     raymarcher=raymarcher
-            # )
-            # sil_error = 0
-            # img_error  = 0
-            # for i in range(BATCH_SIZE):
-            #     taxonomy_name = taxonomy_names[i]
-            #     sample_name = sample_names[i]
-            #     ground_truth_volume = ground_truth_volumes[i]
-            #     generated_volume = generated_volumes[i]
-                
-            #     # gt_array_3d = torch.tensor(generated_volume.data, dtype=torch.float32)
-            #     # # generated volume 
-            #     # gv_array_3d = torch.tensor(generated_volume.data, dtype=torch.float32)
-                
-            #     # get the rendering for the ground truth volmue
-            #     colors = torch.zeros(*ground_truth_volume.shape).to('cuda')
-            #     colors[ground_truth_volume==1] = 1
-
-            #     volume_size = 32
-            #     colors = colors.expand(num_views, 3, *ground_truth_volume.shape)
-            #     dens = ground_truth_volume.expand(num_views, 1, *ground_truth_volume.shape)
-            #     volume = Volumes(
-            #         densities=dens, 
-            #         features=colors,
-            #         voxel_size=(volume_extent_world/volume_size) / 2
-            #     )
-            #     gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-            #     for j in range(num_views):
-            #         plt.imshow(gt_rendered_images[j].detach().cpu().numpy())
-                
-            #     # get the rendering for the generated volume
-            #     colors = torch.zeros(*generated_volume.shape).to('cuda')
-            #     colors[generated_volume==1] = 1
-            #     volume_size = 32
-            #     colors = colors.expand(num_views, 3, *generated_volume.shape)
-            #     dens = generated_volume.expand(num_views, 1, *generated_volume.shape)
-            #     volume = Volumes(
-            #         densities=dens, 
-            #         features=colors,
-            #         voxel_size=(volume_extent_world/volume_size) / 2
-            #     )
-            #     g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
-            #     for j in range(num_views):
-            #         sil_error +=  huber(
-            #             g_rendered_silhouettes[j], gt_rendered_silhouettes[j],
-            #         ).abs().mean()
-
-            #         img_error +=  huber(
-            #             g_rendered_images[j], gt_rendered_images[j],
-            #         ).abs().mean()
 
             # Gradient decent
             encoder.zero_grad()
