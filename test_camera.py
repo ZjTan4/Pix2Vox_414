@@ -1,3 +1,8 @@
+# Developed by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# This file is used to we tested differentiable renderer
+
+
+
 import pstats
 from django.shortcuts import render
 import torch

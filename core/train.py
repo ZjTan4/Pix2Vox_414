@@ -82,15 +82,28 @@ def train_net(cfg):
         utils.data_transforms.ToTensor(),
     ])
     # volumetric renderer
-    # render_size = 576
+    
+    
+    # define the parameters used for volumetric renderer
+    # set the image size for projected volume the same as input image
+    
+    render_size = 224
     volume_extent_world = 1.5
+    
+    
+    #initialize the raysampler using NDCMultinomialRaysampler to emitting rays according to pytorch3D conventions and for each pixel which is passed by a 
+    #ray, sample 50 points along the ray when it pass through the generated volume at certain distance interval    
     raysampler = NDCMultinomialRaysampler(
-        image_width=IMG_SIZE[1], 
-        image_height=IMG_SIZE[0],
+        #image_width=IMG_SIZE[1], 
+        #image_height=IMG_SIZE[0],
+        image_width = render_size,
+        image_height = render_size,
         n_pts_per_ray=50, 
         min_depth=0.1,
         max_depth=volume_extent_world
     )
+    
+    # initialize the raymathcer,EmissionAbsorptionRaymarcher aggregate the point sampled along each emitting ray and decide the final pixel in the silhouette image plane
     raymarcher = EmissionAbsorptionRaymarcher()
     vox_renderer = VolumeRenderer(
         raysampler=raysampler, 
@@ -265,58 +278,53 @@ def train_net(cfg):
             
             num_views = 4
             dist_ratio = 1
-            elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
-            #print("1",elev.shape)
 
-            #elev = torch.linspace(-180, 180, num_views ) + 180.0
-            #print("2",elev.shape)
-
-            azim = torch.linspace(-180, 180, num_views) + 180.0
-            #print("3",azim.shape)
+            ########elev = torch.linspace(-180, 180, num_views ) + 180.0
+            ########elev = elev.expand(BATCH_SIZE, num_views).T.flatten()
             
-            #azim = torch.linspace(0, 360, num_views) + 45.0
-            #print("azim:",azim)
+            #sample 4 the camera position for each generated and ground truth volume in the batch 
+            elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
+            azim = torch.linspace(-180, 180, num_views) + 180.0
+
+            ##########azim = torch.linspace(0, 360, num_views) + 45.0
             azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
-            elev = elev.expand(BATCH_SIZE, num_views).T.flatten()
 
 
-            ## get rotation and translation transformation matrix of camera
+            # get rotation and translation transformation matrix of camera
             R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim) 
             
-            ## defined the FoV which would project the scene using full perspective transformation matrix
+            # defined the FoV which would project the scene using full perspective transformation matrix
             fovCameras = FoVPerspectiveCameras(
                 R=R, 
                 T=T,
                 device='cuda'
                 # device='cpu'
             )
-            # define the parameters used for volumetric renderer
-            # set the image size for projected volume the same as input image
-            render_size = 224
-            volume_extent_world = 1.5
-            # initialize the raysampler using NDCMultinomialRaysampler to emitting rays according to pytorch3D conventions and for each pixel which is passed by a 
-            # ray, sample 50 points along the ray when it pass through the generated volume at certain distance interval
-            raysampler = NDCMultinomialRaysampler(
-                image_width=render_size, 
-                image_height=render_size,
-                n_pts_per_ray=50, 
-                min_depth=0.1,
-                max_depth=volume_extent_world
-            )
-            # initialize the raymathcer,EmissionAbsorptionRaymarcher aggregate 
-            raymarcher = EmissionAbsorptionRaymarcher()
-            # initialize the vox renderer
-            vox_renderer = VolumeRenderer(
-                raysampler=raysampler, 
-                raymarcher=raymarcher
-            )
+            
+            
+
+            ######render_size = 224
+            ######volume_extent_world = 1.5
+            ######raysampler = NDCMultinomialRaysampler(
+                ######image_width=render_size, 
+                ######image_height=render_size,
+                ######n_pts_per_ray=50, 
+                ######min_depth=0.1,
+                ######max_depth=volume_extent_world
+            ######)
+            ######raymarcher = EmissionAbsorptionRaymarcher()
+            ####### initialize the vox renderer
+            ######vox_renderer = VolumeRenderer(
+                ######raysampler=raysampler, 
+                ######raymarcher=raymarcher
+            ######)
+            
+
             
             volume_size = 32    
             
-            ### get the rendering for the ground truth volmue
-            ### (batch, 32, 32, 32)
-            
-            
+            # get the rendering for the ground truth volmue
+            # (batch, 32, 32, 32)
             show_image_iter = 500
             
             ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(num_views, 1, 1, 1, 1)
@@ -329,14 +337,14 @@ def train_net(cfg):
             )
             # gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
             
-            ### render ground truth volumes to get ground truth silhouettes images
+            # render ground truth volumes to get ground truth silhouettes images
             gt_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
             
             
-            #### plot the silhouette image to check 
-            # if batch_idx == show_image_iter:
-            #     plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
-            #     plt.show()
+            ############ plot the silhouette image to check 
+            ######### if batch_idx == show_image_iter:
+            #########     plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
+            #########     plt.show()
 
             # get the rendering for the generated volume
             generated_volumes = generated_volumes[:, None, :, :, :].repeat(num_views, 1, 1, 1, 1)
@@ -347,21 +355,19 @@ def train_net(cfg):
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
 
-            ### render generated volumes to get the silhouettes images
 
-            # g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+            # render generated volumes to get the silhouettes images
+            ##### g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
             g_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
-            # sil_error =  huber(
-            #     g_rendered_silhouettes, gt_rendered_silhouettes,
-            # ).abs().mean()
+            ##### sil_error =  huber(
+            #####     g_rendered_silhouettes, gt_rendered_silhouettes,
+            ##### ).abs().mean()
             
-            """
-            if batch_idx == show_image_iter:
-                plt.imshow(g_rendered_images[0].detach().cpu().numpy())
-                plt.show()
-            """
+            #####if batch_idx == show_image_iter:
+                #####plt.imshow(g_rendered_images[0].detach().cpu().numpy())
+                #####plt.show()
                 
-            #### compute the huber loss of from silhouettes
+            # compute the huber loss of from silhouettes
             img_error =  huber(
                 g_rendered_images, gt_rendered_images,
             ).abs().mean()
@@ -374,17 +380,17 @@ def train_net(cfg):
             
             
             
-            ### add the silhouettes based loss to the the previous BCE loss
+            # add the silhouettes based loss to the the previous BCE loss
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
                 #encoder_loss += (sil_error + img_error)
                 encoder_loss += (img_error)
                 encoder_loss.backward(retain_graph=True)
 
-                #refiner_loss += (sil_error + img_error)
+                ######refiner_loss += (sil_error + img_error)
                 refiner_loss += (img_error)
                 refiner_loss.backward()
             else:
-                # encoder_loss += (sil_error + img_error)
+                #######encoder_loss += (sil_error + img_error)
                 encoder_loss += (img_error * 10)
                 encoder_loss.backward()
             
