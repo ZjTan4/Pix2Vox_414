@@ -26,9 +26,11 @@ pip install -r requirements.txt
 
 In addition, we also used torch, torchvision with cuda and pytorch3d. To install the correct version based on your hardware, please follow the instruction:
 
+Instruction about installing torchvision iwth cuda:
 https://pytorch.org/get-started/locally/
 
-https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md
+Instruction about installing pytorch3d:
+- https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md
 ```
 
 #### Update Settings in `config.py`
