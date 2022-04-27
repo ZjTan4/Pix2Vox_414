@@ -251,8 +251,18 @@ def train_net(cfg):
             num_views = 4
             dist_ratio = 1
             elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
+            print("1",elev.shape)
+
+            elev = torch.linspace(-180, 180, num_views ) + 180.0
+            print("2",elev.shape)
+
             azim = torch.linspace(-180, 180, num_views) + 180.0
+            print("3",azim.shape)
+            
+            #azim = torch.linspace(0, 360, num_views) + 45.0
+            #print("azim:",azim)
             azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
+            elev = elev.expand(BATCH_SIZE, num_views).T.flatten()
 
             R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
             fovCameras = FoVPerspectiveCameras(
@@ -284,7 +294,7 @@ def train_net(cfg):
             # get the rendering for the ground truth volmue
             # (batch, 32, 32, 32)
             show_image_iter = 500
-            ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
+            ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(num_views, 1, 1, 1, 1)
             volume = Volumes(
                 densities=ground_truth_volumes, 
                 # features=colors,
@@ -297,7 +307,7 @@ def train_net(cfg):
             #     plt.show()
 
             # get the rendering for the generated volume
-            generated_volumes = generated_volumes[:, None, :, :, :].repeat(4, 1, 1, 1, 1)
+            generated_volumes = generated_volumes[:, None, :, :, :].repeat(num_views, 1, 1, 1, 1)
             volume = Volumes(
                 densities=generated_volumes, 
                 # features=colors,
@@ -309,9 +319,9 @@ def train_net(cfg):
             # sil_error =  huber(
             #     g_rendered_silhouettes, gt_rendered_silhouettes,
             # ).abs().mean()
-            # if batch_idx == show_image_iter:
-            #     plt.imshow(g_rendered_images[0].detach().cpu().numpy())
-            #     plt.show()
+            if batch_idx == show_image_iter:
+                plt.imshow(g_rendered_images[0].detach().cpu().numpy())
+                plt.show()
             img_error =  huber(
                 g_rendered_images, gt_rendered_images,
             ).abs().mean()
