@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
 
 import cv2
 import json

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# Editted by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# This file defines the process used in test step, load the testset according to the .json defined and print evaluation data
 
 import json
 import numpy as np
@@ -156,9 +158,9 @@ def test_net(cfg,
                 test_writer.add_image('Test Sample#%02d/Volume GroundTruth' % sample_idx, rendering_views, epoch_idx)
 
             # Print sample loss and IoU
-            print('[INFO] %s Test[%d/%d] Taxonomy = %s Sample = %s EDLoss = %.4f RLoss = %.4f IoU = %s' %
-                  (dt.now(), sample_idx + 1, n_samples, taxonomy_id, sample_name, encoder_loss.item(),
-                   refiner_loss.item(), ['%.4f' % si for si in sample_iou]))
+            # print('[INFO] %s Test[%d/%d] Taxonomy = %s Sample = %s EDLoss = %.4f RLoss = %.4f IoU = %s' %
+            #       (dt.now(), sample_idx + 1, n_samples, taxonomy_id, sample_name, encoder_loss.item(),
+            #        refiner_loss.item(), ['%.4f' % si for si in sample_iou]))
 
     # Output testing results
     mean_iou = []

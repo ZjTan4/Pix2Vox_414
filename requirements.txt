@@ -3,7 +3,7 @@ easydict
 matplotlib
 numpy
 opencv-python
-pprintpp
 scipy
 torchvision
 tensorboardX
+pytorch3d

@@ -1,7 +1,10 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# Editted by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# This file take the arguement and decide to run training or test procudure
+
 
 import logging
 import matplotlib

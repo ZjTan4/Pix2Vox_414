@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
-#
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# Editted and Commented by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# This file store the defined encoder which use first 16 layers of pretrained vgg network and 3 more 2d Convolutional layer to
+# extract features from input RPG image
+# During training process, the pre-trained vgg network will not be updated
+
 # References:
 # - https://github.com/shawnxu1318/MVCNN-Multi-View-Convolutional-Neural-Networks/blob/master/mvcnn.py
+
 
 import torch
 import torchvision.models
