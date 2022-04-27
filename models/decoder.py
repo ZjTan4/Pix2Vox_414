@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# Editted and Commented by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# This file store the defined decoder which use 5 Tranposed 3D convolutional 
+# to reconstruct the 3D shape from extracted feature from encoder
+# 
 
 import torch
 

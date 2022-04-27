@@ -1,3 +1,10 @@
+# Developed by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# In this file, we tested and figured out a way to use parameters stored in meta data to 
+# render generated volumes exactly same pose as input image view.
+# However, it is not directly used in current implementation.
+
+
+
 import pstats
 from django.shortcuts import render
 import torch
@@ -12,12 +19,23 @@ from pytorch3d.renderer import (
     EmissionAbsorptionRaymarcher
 )
 from pytorch3d.structures import Volumes
+
+
+
 # from utils.binvox_rw import read_as_3d_array, read_as_coord_array
 # import utils.camera as camera
-from utils.binvox_rw import read_as_3d_array, read_as_coord_array
-import utils.camera as camera
+#from utils.binvox_rw import read_as_3d_array, read_as_coord_array
+
+from binvox_rw import read_as_3d_array, read_as_coord_array
+import pytorch3d.renderer
+
+#import utils.camera as camera
+import camera as camera
+
 import numpy as np
 import cv2 as cv
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 def compute_extrinsic_matrix(azimuth, elevation, distance):
     """
@@ -76,6 +94,7 @@ def main():
     print([azim, elev, yaw, dist_ratio, fov])
     RT = compute_extrinsic_matrix(azim, elev, dist_ratio)
     R, T = camera.compute_camera_calibration(RT)
+    R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
 
     # Intrinsic matrix extracted from the Blender with slight modification to work with
     # PyTorch3D world space. Taken from meshrcnn codebase:

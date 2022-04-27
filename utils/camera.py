@@ -1,3 +1,6 @@
+# Helper functions modified from pytorch3D by Zijie Tan, Zepeng Xiao, Shiyu Xiu
+# Used to compute extrinsic camera parameters from the parameters sphere gemometry
+# 
 
 import math
 from typing import Dict, List

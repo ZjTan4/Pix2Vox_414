@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+
+# Editted and Commented by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+
+# The merger is used to learn from the coarse_volumes to adjust the generated volumes using context aware fusion
 
 import torch
 

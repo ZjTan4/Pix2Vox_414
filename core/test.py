@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# Editted by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+# This file defines the process used in test step, load the testset according to the .json defined and print evaluation data
 
 import json
 import numpy as np

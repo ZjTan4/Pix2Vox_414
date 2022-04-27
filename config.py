@@ -1,6 +1,21 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# We editted by config to only use ShapeNetCore to train our data
+# To run the code, change the path of the following 
+#
+#__C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = '..path/ShapeNet.json'
+#This .json file is used to identify The categories and seperate Training, Validate, Test sets 
+
+#__C.DATASETS.SHAPENET.RENDERING_PATH        = '../Pix2Vox/ShapeNetRendering/%s/%s/rendering/%02d.png'
+#change the "../Pix2Vox/ShapeNetRendering" part to the path that you store the downloaded shapeNetrendered image
+#__C.DATASETS.SHAPENET.VOXEL_PATH            = '../Pix2Vox/ShapeNetVox32/%s/%s/model.binvox'
+#change the "../Pix2Vox/ShapeNetVox32" part to the path that you store the downloaded shapeNet 32^3 .binvox
+
+#__C.CONST.BATCH_SIZE                        
+# defines the batch size during training
+#__C.CONST.N_VIEWS_RENDERING                 = 1     
+# defines num of views(1 for single view)/num of input images used for each object
 
 from easydict import EasyDict as edict
 
@@ -88,7 +103,7 @@ __C.TRAIN                                   = edict()
 __C.TRAIN.RESUME_TRAIN                      = False
 __C.TRAIN.NUM_WORKER                        = 1             # number of data workers
 # __C.TRAIN.NUM_EPOCHES                       = 250
-__C.TRAIN.NUM_EPOCHES                       = 20
+__C.TRAIN.NUM_EPOCHES                       = 10
 #__C.TRAIN.NUM_EPOCHES                       = 1
 __C.TRAIN.BRIGHTNESS                        = .4
 __C.TRAIN.CONTRAST                          = .4

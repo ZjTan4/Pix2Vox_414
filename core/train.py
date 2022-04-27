@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 #
-# Developed by Haozhe Xie <cshzxie@gmail.com>
+# Originally Developed by Haozhe Xie <cshzxie@gmail.com>
+# Editted by Zijie Tan,Zepeng Xiao,Shiyu Xiu
+
+# This file defines the training process, and it contains our major change to original implementation
+# th load the testset according to the .json defined and print evaluation data
+
 
 import os
 import random
@@ -44,7 +49,7 @@ from pytorch3d.datasets import r2n2
 from utils import camera
 
 # A helper function for evaluating the smooth L1 (huber) loss
-# between the rendered silhouettes and colors.
+# between the silhouettes of generated volumes and ground truth volume.
 def huber(x, y, scaling=0.1):
     diff_sq = (x - y) ** 2
     loss = ((1 + diff_sq / (scaling**2)).clamp(1e-4).sqrt() - 1) * float(scaling)
@@ -204,7 +209,8 @@ def train_net(cfg):
     train_writer = SummaryWriter(os.path.join(log_dir, 'train'))
     val_writer = SummaryWriter(os.path.join(log_dir, 'test'))
 
-    # Training loop
+    # Main Training loop
+    # For each epoches, training in batches
     for epoch_idx in range(init_epoch, cfg.TRAIN.NUM_EPOCHES):
         # Tick / tock
         epoch_start_time = time()
@@ -247,34 +253,49 @@ def train_net(cfg):
                 refiner_loss = bce_loss(generated_volumes, ground_truth_volumes) * 10
             else:
                 refiner_loss = encoder_loss
-
+            
+            
+            
+            ###The most important change in our code
+            ###After the batch of volumes are generated, we simulate certain number of views by defining the camera posision using spherecal geometry
+            ###the number of views we used is 4 due to hardware constraint, could set it higher if graphic memory allows
+            
+            ##Then fit the defined 4 camera view in batches and project each generated volumes into a image plane that has same size as input image using volumetric using raycasting algorithm
+            
+            
             num_views = 4
             dist_ratio = 1
             elev = torch.linspace(0, 0, num_views * BATCH_SIZE)
-            print("1",elev.shape)
+            #print("1",elev.shape)
 
-            elev = torch.linspace(-180, 180, num_views ) + 180.0
-            print("2",elev.shape)
+            #elev = torch.linspace(-180, 180, num_views ) + 180.0
+            #print("2",elev.shape)
 
             azim = torch.linspace(-180, 180, num_views) + 180.0
-            print("3",azim.shape)
+            #print("3",azim.shape)
             
             #azim = torch.linspace(0, 360, num_views) + 45.0
             #print("azim:",azim)
             azim = azim.expand(BATCH_SIZE, num_views).T.flatten()
             elev = elev.expand(BATCH_SIZE, num_views).T.flatten()
 
-            R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim)
+
+            ## get rotation and translation transformation matrix of camera
+            R, T = pytorch3d.renderer.cameras.look_at_view_transform(dist=dist_ratio, elev=elev, azim=azim) 
+            
+            ## defined the FoV which would project the scene using full perspective transformation matrix
             fovCameras = FoVPerspectiveCameras(
                 R=R, 
                 T=T,
                 device='cuda'
                 # device='cpu'
             )
-            # volumetric renderer
+            # define the parameters used for volumetric renderer
+            # set the image size for projected volume the same as input image
             render_size = 224
             volume_extent_world = 1.5
-            # initialize the raysampler
+            # initialize the raysampler using NDCMultinomialRaysampler to emitting rays according to pytorch3D conventions and for each pixel which is passed by a 
+            # ray, sample 50 points along the ray when it pass through the generated volume at certain distance interval
             raysampler = NDCMultinomialRaysampler(
                 image_width=render_size, 
                 image_height=render_size,
@@ -282,7 +303,7 @@ def train_net(cfg):
                 min_depth=0.1,
                 max_depth=volume_extent_world
             )
-            # initialize the raymathcer
+            # initialize the raymathcer,EmissionAbsorptionRaymarcher aggregate 
             raymarcher = EmissionAbsorptionRaymarcher()
             # initialize the vox renderer
             vox_renderer = VolumeRenderer(
@@ -290,38 +311,57 @@ def train_net(cfg):
                 raymarcher=raymarcher
             )
             
-            volume_size = 32            
-            # get the rendering for the ground truth volmue
-            # (batch, 32, 32, 32)
+            volume_size = 32    
+            
+            ### get the rendering for the ground truth volmue
+            ### (batch, 32, 32, 32)
+            
+            
             show_image_iter = 500
+            
             ground_truth_volumes = ground_truth_volumes[:, None, :, :, :].repeat(num_views, 1, 1, 1, 1)
+            
+            ###convert the volume to Volumes object from pytorch 3D in order to render
             volume = Volumes(
                 densities=ground_truth_volumes, 
                 # features=colors,
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
             # gt_rendered_images, gt_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
+            
+            ### render ground truth volumes to get ground truth silhouettes images
             gt_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
+            
+            
+            #### plot the silhouette image to check 
             # if batch_idx == show_image_iter:
             #     plt.imshow(gt_rendered_images[0].detach().cpu().numpy())
             #     plt.show()
 
             # get the rendering for the generated volume
             generated_volumes = generated_volumes[:, None, :, :, :].repeat(num_views, 1, 1, 1, 1)
+            
+            
             volume = Volumes(
                 densities=generated_volumes, 
-                # features=colors,
                 voxel_size=(volume_extent_world/volume_size) / 2
             )
+
+            ### render generated volumes to get the silhouettes images
 
             # g_rendered_images, g_rendered_silhouettes = vox_renderer(cameras=fovCameras, volumes=volume)[0].split([3, 1], dim=-1)
             g_rendered_images = vox_renderer(cameras=fovCameras, volumes=volume)[0]
             # sil_error =  huber(
             #     g_rendered_silhouettes, gt_rendered_silhouettes,
             # ).abs().mean()
+            
+            """
             if batch_idx == show_image_iter:
                 plt.imshow(g_rendered_images[0].detach().cpu().numpy())
                 plt.show()
+            """
+                
+            #### compute the huber loss of from silhouettes
             img_error =  huber(
                 g_rendered_images, gt_rendered_images,
             ).abs().mean()
@@ -331,7 +371,10 @@ def train_net(cfg):
             decoder.zero_grad()
             refiner.zero_grad()
             merger.zero_grad()
-
+            
+            
+            
+            ### add the silhouettes based loss to the the previous BCE loss
             if cfg.NETWORK.USE_REFINER and epoch_idx >= cfg.TRAIN.EPOCH_START_USE_REFINER:
                 #encoder_loss += (sil_error + img_error)
                 encoder_loss += (img_error)
@@ -344,7 +387,9 @@ def train_net(cfg):
                 # encoder_loss += (sil_error + img_error)
                 encoder_loss += (img_error * 10)
                 encoder_loss.backward()
-
+            
+            
+            ##update parameter using optimizer
             encoder_solver.step()
             decoder_solver.step()
             refiner_solver.step()
@@ -355,6 +400,8 @@ def train_net(cfg):
             refiner_losses.update(refiner_loss.item())
             # Append loss to TensorBoard
             n_itr = epoch_idx * n_batches + batch_idx
+            
+            # write losses to TensorBoard
             train_writer.add_scalar('EncoderDecoder/BatchLoss', encoder_loss.item(), n_itr)
             train_writer.add_scalar('Refiner/BatchLoss', refiner_loss.item(), n_itr)
 
