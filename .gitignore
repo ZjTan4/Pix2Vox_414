@@ -104,7 +104,6 @@ ENV/
 .DS_Store
 
 # Datasets
-datasets/
 ShapeNetRendering/*
 ShapeNetVox32/*
 pix3d/*
