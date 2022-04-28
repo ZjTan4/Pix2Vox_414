@@ -16,7 +16,7 @@ We use the [ShapeNet](https://www.shapenet.org/) datasets in our experiments, wh
 ```
 git clone https://github.com/ZjTan4/Pix2Vox_414.git
 cd Pix2Vox_414
-git checkout vox_renderer
+git switch vox_renderer
 ```
 
 #### Install Python Denpendencies
@@ -36,7 +36,6 @@ https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md
 You need to update the file path of the datasets downloaded from previous section:
 
 ```
-__C.DATASETS.SHAPENET.TAXONOMY_FILE_PATH    = '/path/ShapeNet.json'
 __C.DATASETS.SHAPENET.RENDERING_PATH        = '/path/to/Datasets/ShapeNet/ShapeNetRendering/%s/%s/rendering/%02d.png'
 __C.DATASETS.SHAPENET.VOXEL_PATH            = '/path/to/Datasets/ShapeNet/ShapeNetVox32/%s/%s/model.binvox'
 
