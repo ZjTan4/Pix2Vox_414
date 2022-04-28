@@ -13,10 +13,18 @@ We use the [ShapeNet](https://www.shapenet.org/) datasets in our experiments, wh
 
 #### Clone the Code Repository and switch to vox_renderer branch
 
-```
 git clone https://github.com/ZjTan4/Pix2Vox_414.git
 cd Pix2Vox_414
-git checkout vox_renderer
+
+```
+if you want to run our silhouette guided implementation, stay at main branch or go to vox_renderer branch,
+they share exactly the same implementation, (optional)run:
+
+git switch vox_renderer
+
+if you want to run original pix2vox implementation in order to compare with own approach, run:
+
+git switch baseline
 ```
 
 #### Install Python Denpendencies
