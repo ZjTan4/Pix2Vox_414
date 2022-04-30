@@ -1,4 +1,4 @@
-# Pix2Vox with Silhouette Guidance
+# Pix2Vox with Silhouette Guidance(contributor:Zijie Tan,Zepeng Xiao,Shiyu Xiu)
 
 ## Datasets
 
